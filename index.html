@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Craft</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <style>
+        /* --- CSS VARS & RESET --- */
+        :root {
+            --accent: #8b5cf6;
+            --bg: #1f2937;
+            --header-bg: #111827;
+            --card-bg: #374151;
+            --text: #f3f4f6;
+            --muted: #9ca3af;
+            --border: #4b5563;
+            --danger: #ef4444;
+            --success: #10b981;
+            --warn: #f59e0b;
+            --star: #f59e0b; /* Ditambahkan untuk warna bintang rating */
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        body.light-theme {
+            --bg: #f3f4f6; --header-bg: #e5e7eb; --card-bg: #ffffff;
+            --text: #1f2937; --muted: #6b7280; --border: #d1d5db;
+        }
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; transition: background 0.3s, color 0.3s; }
+        body { margin: 0; background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; overflow-x: hidden; }
+
+        /* --- LAYOUT UTAMA --- */
+        .container { flex-grow: 1; padding: 20px; max-width: 1200px; margin: 0 auto; }
+        .panel {
+            width: 300px; background: var(--header-bg); border-right: 1px solid var(--border);
+            padding: 0; position: fixed; top: 0; bottom: 0; left: 0; z-index: 100;
+            display: flex; flex-direction: column; overflow-y: auto;
+        }
+        main { flex-grow: 1; padding: 20px; margin-left: 300px; }
+        #grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px; }
+        
+        /* Mobile Resp */
+        @media (max-width: 820px) {
+            .panel { transform: translateX(-100%); transition: transform 0.3s; }
+            .panel.open { transform: translateX(0); }
+            main { margin-left: 0; }
+            .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 99; display: none; }
+            .overlay.open { display: block; }
+        }
+
+        /* --- COMPONENTS --- */
+        button {
+            padding: 8px 15px; border: none; border-radius: 6px; cursor: pointer;
+            background: var(--accent); color: white; font-weight: bold; opacity: 0.9;
+        }
+        button:hover { opacity: 1; transform: scale(1.02); }
+        .sec { background: var(--card-bg) !important; border: 1px solid var(--border); color: var(--text) !important; }
+        .dang { background: var(--danger) !important; }
+        input, select, textarea {
+            width: 100%; padding: 10px; margin: 5px 0 10px; border-radius: 6px;
+            border: 1px solid var(--border); background: var(--bg); color: var(--text);
+        }
+        
+        /* --- ITEM CARD --- */
+        .item { background: var(--card-bg); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column; }
+        .item:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+        .item-img { height: 180px; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .item-img img { width: 100%; height: 100%; object-fit: cover; }
+        .item-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; }
+
+        /* --- ANIMATED BORDERS (20 VARIATIONS) --- */
+        .profile-icon-container {
+            position: relative; width: 60px; height: 60px; border-radius: 50%;
+            padding: 3px; /* Space for border */
+            cursor: pointer; display: inline-block; flex-shrink: 0;
+            background: var(--bg); /* To hide overlapping */
+        }
+        .profile-icon-container img {
+            width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
+            position: relative; z-index: 2; background: var(--card-bg);
+        }
+        
+        /* 1. Default */ .border-default { border: 2px solid var(--border); padding: 2px; }
+        /* 2. Gold */ .border-gold { box-shadow: 0 0 0 3px gold, 0 0 15px gold; }
+        /* 3. Custom */ .border-custom { /* Logic di JS via inline style */ transition: box-shadow 0.3s; }
+        
+        /* 4. Galaxy */
+        .border-galaxy::before {
+            content: ''; position: absolute; inset: -3px; border-radius: 50%; z-index: 1;
+            background: linear-gradient(45deg, #f09, #30f, #0ff); animation: spin 2s linear infinite;
+        }
+        /* 5. Fire */
+        .border-fire { box-shadow: 0 0 0 2px #ff4500, 0 0 15px #ff4500; animation: pulse-red 1s infinite alternate; }
+        /* 6. Ice */
+        .border-ice { box-shadow: 0 0 0 2px #00ffff, 0 0 15px #00ffff; }
+        /* 7. Nature */
+        .border-nature { border: 3px dashed #10b981; animation: spin 10s linear infinite; }
+        /* 8. Neon Red */
+        .border-neon-red { border: 2px solid #ff0055; box-shadow: 0 0 10px #ff0055, inset 0 0 10px #ff0055; }
+        /* 9. Neon Blue */
+        .border-neon-blue { border: 2px solid #0055ff; box-shadow: 0 0 10px #0055ff, inset 0 0 10px #0055ff; }
+        /* 10. Matrix */
+        .border-matrix { border: 2px dotted #0f0; box-shadow: 0 0 5px #0f0; animation: pulse-green 0.5s infinite; }
+        /* 11. Rainbow Spin */
+        .border-rainbow-spin::before {
+            content: ''; position: absolute; inset: -3px; border-radius: 50%; z-index: 1;
+            background: conic-gradient(red, orange, yellow, green, blue, violet, red); animation: spin 3s linear infinite;
+        }
+        /* 12. Thunder */
+        .border-thunder { border: 3px solid #fbbf24; box-shadow: 0 0 15px #8b5cf6; }
+        /* 13. Sunset */
+        .border-sunset { background: linear-gradient(to bottom, #f97316, #db2777); padding: 4px; }
+        /* 14. Ocean */
+        .border-ocean { background: linear-gradient(45deg, #06b6d4, #3b82f6); padding: 4px; }
+        /* 15. Glitch */
+        .border-glitch { border: 2px solid white; box-shadow: -2px 0 red, 2px 0 blue; animation: glitch 0.2s infinite; }
+        /* 16. Pinky */
+        .border-pinky { border: 3px double #ec4899; box-shadow: 0 0 10px #ec4899; }
+        /* 17. Dark Soul */
+        .border-dark { border: 3px solid #000; box-shadow: 0 0 10px #ef4444; }
+        /* 18. Holy */
+        .border-holy { border: 3px solid #fff; box-shadow: 0 0 20px #fff; }
+        /* 19. Toxic */
+        .border-toxic { border: 3px dashed #a3e635; background: #3f6212; padding: 3px; animation: spin-rev 5s linear infinite; }
+        /* 20. RGB Flow */
+        .border-rgb-flow { animation: rgb-bg 3s infinite alternate; padding: 4px; background: red; }
+        /* --- ANIMATED BORDERS (15 NEW VARIATIONS - 21 to 35) --- */
+        /* 21. Pulse Blue */
+        .border-pulse-blue { box-shadow: 0 0 0 2px #3b82f6, 0 0 15px #3b82f6; animation: pulse-blue 1s infinite alternate; }
+        /* 22. Scanline */
+        .border-scanline::before {
+            content: ''; position: absolute; inset: -3px; border-radius: 50%; z-index: 1;
+            background: repeating-linear-gradient(45deg, var(--accent), var(--accent) 5px, transparent 5px, transparent 10px);
+            animation: move-scan 0.5s linear infinite;
+        }
+        /* 23. Ethereal */
+        .border-ethereal { box-shadow: 0 0 0 1px #fff, 0 0 10px rgba(255, 255, 255, 0.8), inset 0 0 5px #fff; animation: fade-white 2s infinite alternate; }
+        /* 24. Neon Green */
+        .border-neon-green { border: 2px solid #0f0; box-shadow: 0 0 10px #0f0, inset 0 0 10px #0f0; animation: pulse-green-neon 1s infinite alternate; }
+        /* 25. Dual Tone */
+        .border-dual-tone::before {
+            content: ''; position: absolute; inset: -3px; border-radius: 50%; z-index: 1;
+            background: linear-gradient(90deg, #ff7e5f, #feb47b, #ff7e5f); animation: spin 2s linear infinite;
+            background-size: 200% 200%;
+        }
+        /* 26. Square Wave */
+        .border-square-wave { border: 3px solid var(--accent); animation: border-width-wave 1s infinite alternate; }
+        /* 27. Bubble Gum */
+        .border-bubblegum { background: linear-gradient(45deg, #ff85a1, #85a1ff); padding: 4px; animation: rgb-bg 4s infinite; }
+        /* 28. Aqua */
+        .border-aqua::before {
+            content: ''; position: absolute; inset: -3px; border-radius: 50%; z-index: 1;
+            background: linear-gradient(90deg, #00c6ff, #0072ff, #00c6ff); animation: move-gradient 2s linear infinite;
+            background-size: 300% 100%;
+        }
+        /* 29. Retro TV */
+        .border-retro-tv { border: 2px dashed #ccc; box-shadow: 0 0 0 1px #888; animation: retro-flicker 0.1s infinite; }
+        /* 30. Sunbeam */
+        .border-sunbeam::before {
+            content: ''; position: absolute; inset: -3px; border-radius: 50%; z-index: 1;
+            background: conic-gradient(from 0deg, transparent 0deg, #f59e0b 45deg, transparent 90deg, #ef4444 135deg, transparent 180deg, #f59e0b 225deg, transparent 270deg, #ef4444 315deg, transparent 360deg);
+            animation: spin 6s linear infinite;
+        }
+        /* 31. Plasma */
+        .border-plasma::before {
+            content: ''; position: absolute; inset: -3px; border-radius: 50%; z-index: 1;
+            background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045); animation: plasma-flow 4s infinite alternate;
+            background-size: 200% 200%;
+        }
+        /* 32. Pulse Yellow */
+        .border-pulse-yellow { box-shadow: 0 0 0 2px #facc15, 0 0 15px #facc15; animation: pulse-yellow 1s infinite alternate; }
+        /* 33. Wave */
+        .border-wave { border: 2px solid var(--accent); animation: wave-shadow 1s infinite alternate; }
+        /* 34. Dark Neon */
+        .border-dark-neon { border: 1px solid #1f2937; box-shadow: 0 0 5px #00ffff; }
+        /* 35. Fade In */
+        .border-fade-in { border: 3px solid var(--accent); animation: fade-in-out 2s infinite alternate; }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes spin-rev { 100% { transform: rotate(-360deg); } }
+        @keyframes pulse-red { from { box-shadow: 0 0 5px #ff4500; } to { box-shadow: 0 0 20px #ff4500; } }
+        @keyframes pulse-green { from { opacity: 0.7; } to { opacity: 1; } }
+        @keyframes pulse-blue { from { box-shadow: 0 0 5px #3b82f6; } to { box-shadow: 0 0 20px #3b82f6; } }
+        @keyframes pulse-yellow { from { box-shadow: 0 0 5px #facc15; } to { box-shadow: 0 0 20px #facc15; } }
+        @keyframes move-scan { 100% { background-position: 30px 0; } }
+        @keyframes fade-white { from { opacity: 0.5; } to { opacity: 1; } }
+        @keyframes pulse-green-neon { from { box-shadow: 0 0 5px #0f0; } to { box-shadow: 0 0 20px #0f0; } }
+        @keyframes border-width-wave { 0% { border-width: 3px; } 50% { border-width: 1px; } 100% { border-width: 3px; } }
+        @keyframes move-gradient { 0% { background-position: 0% 50%; } 100% { background-position: 100% 50%; } }
+        @keyframes retro-flicker { 0% { border-color: #ccc; } 50% { border-color: #555; } 100% { border-color: #ccc; } }
+        @keyframes plasma-flow { 0% { background-position: 0% 0%; } 50% { background-position: 100% 100%; } 100% { background-position: 0% 0%; } }
+        @keyframes wave-shadow { 0% { box-shadow: 0 0 0 0px var(--accent); } 50% { box-shadow: 0 5px 10px 0px var(--accent); } 100% { box-shadow: 0 0 0 0px var(--accent); } }
+        @keyframes fade-in-out { 0% { border-color: rgba(139, 92, 246, 0.2); } 100% { border-color: rgba(139, 92, 246, 1); } }
+        @keyframes glitch { 0% { transform: translate(0); } 20% { transform: translate(-2px, 2px); } 40% { transform: translate(-2px, -2px); } 60% { transform: translate(2px, 2px); } 80% { transform: translate(2px, -2px); } 100% { transform: translate(0); } }
+        @keyframes rgb-bg { 0% { background: #ff0000; } 50% { background: #00ff00; } 100% { background: #0000ff; } }
+
+        /* Modal Styles */
+        .modal-backdrop {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200;
+            display: flex; align-items: center; justify-content: center; backdrop-filter: blur(3px);
+        }
+        .modal-content {
+            background: var(--header-bg); padding: 25px; border-radius: 15px;
+            width: 100%; max-width: 650px; max-height: 90vh; overflow-y: auto;
+            border: 1px solid var(--border); position: relative;
+        }
+        
+        /* Profile View Specifics */
+        .profile-header {
+            text-align: center; border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 20px;
+        }
+        .bio-box {
+            background: var(--bg); padding: 15px; border-radius: 8px; font-size: 0.9em;
+            margin: 15px 0; text-align: left; border: 1px solid var(--border);
+        }
+        .social-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 15px; }
+        .social-btn {
+            display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 20px;
+            text-decoration: none; color: white; font-size: 0.9em; font-weight: bold;
+            transition: transform 0.2s;
+        }
+        .social-btn:hover { transform: translateY(-2px); }
+        .sb-dc { background: #5865F2; } .sb-wa { background: #25D366; } .sb-yt { background: #FF0000; }
+        
+        /* Markdown Styles (Reused for Description) */
+        .md-content { 
+            font-size: 0.9em; /* Diterapkan pada deskripsi dan bio */
+            line-height: 1.5;
+        }
+        .md-content h1, .md-content h2 { border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-top: 10px; font-size: 1.2em; }
+        .md-content p { margin-bottom: 8px; margin-top: 0; }
+        .md-content code { background: rgba(100,100,100,0.2); padding: 2px 5px; border-radius: 4px; font-family: monospace; }
+        .md-content ul { padding-left: 20px; margin-top: 5px; margin-bottom: 8px; }
+
+        /* Border Selector Grid */
+        .border-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; margin-top: 10px; }
+        .border-option {
+            background: var(--bg); border: 2px solid transparent; border-radius: 8px;
+            padding: 10px; text-align: center; cursor: pointer; transition: 0.2s;
+        }
+        .border-option.active { border-color: var(--success); background: rgba(16, 185, 129, 0.1); }
+        .border-option:hover { background: var(--card-bg); }
+        .border-preview-sm { width: 40px; height: 40px; margin: 0 auto; pointer-events: none; }
+        
+        /* Changelog Styles */
+        .changelog-entry {
+            border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-bottom: 8px;
+            background: var(--bg);
+        }
+        .changelog-version {
+            color: var(--accent); font-weight: bold; margin-bottom: 5px; border-bottom: 1px dashed var(--border); padding-bottom: 3px;
+            display: flex; justify-content: space-between; font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="overlay" class="overlay" onclick="toggleSide()"></div>
+    <div id="sidePanel" class="panel">
+        <div style="padding: 20px; text-align: center; border-bottom: 1px solid var(--border);">
+            <img src="title.png" alt="Visual Craft" style="width: 100%; max-width: 200px; height: auto;">
+            <button onclick="tryUploadModal()" style="width:100%; margin-top:15px; background:var(--success);">➕ Upload Add-on</button>
+        </div>
+
+        <div id="authBox" style="padding: 20px;">
+            <h3>Login / Daftar</h3>
+            <input type="text" id="userIn" placeholder="Username">
+            <input type="password" id="passIn" placeholder="Password">
+            <div style="display:flex; gap:10px;">
+                <button onclick="login()" style="flex:1">Masuk</button>
+                <button onclick="register()" class="sec" style="flex:1">Daftar</button>
+            </div>
+        </div>
+
+        <div id="userBox" style="display:none; padding: 20px;">
+            <div style="display:flex; align-items:center; gap:15px; margin-bottom:15px;">
+                <div id="sidebarPFP" class="profile-icon-container border-default" onclick="openProfileEditModal()">
+                    <img id="profileIcon" src="https://via.placeholder.com/100" alt="Profile">
+                </div>
+                <div>
+                    <div id="uName" style="font-weight:bold; font-size:1.1em;">User</div>
+                    <small id="userStatus" style="color:var(--success)">Online</small>
+                </div>
+            </div>
+            <button onclick="openProfileEditModal()" class="sec" style="width:100%; margin-bottom:5px;">🎨 Edit Profil</button>
+            <button onclick="logout()" class="dang" style="width:100%;">Logout</button>
+            
+            <div id="ownerTools" style="display:none; margin-top:20px; padding-top:10px; border-top:1px solid var(--border);">
+                <h4>👑 Owner Panel</h4>
+                <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                    <button class="sec" style="padding:5px 10px; font-size:0.8em;" onclick="showOwnerTab('users')">Users</button>
+                    <button class="sec" style="padding:5px 10px; font-size:0.8em;" onclick="openCategoryModal()">Kategori</button>
+                </div>
+                <div id="ownerTabContent" style="margin-top:10px;"></div>
+            </div>
+        </div>
+
+        <div style="margin-top:auto; padding:20px; border-top:1px solid var(--border);">
+            <label>Tema</label>
+            <select id="themeSelect" onchange="setTheme(this.value)">
+                <option value="dark">Dark Mode</option>
+                <option value="light">Light Mode</option>
+            </select>
+        </div>
+    </div>
+
+    <main>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <img src="title.png" alt="Visual Craft" style="width: 100%; max-width: 200px; height: auto;">
+            <button class="sec" onclick="toggleSide()">☰ Menu</button>
+        </div>
+
+        <div style="margin-bottom:20px;">
+            <input type="text" id="search" oninput="render()" placeholder="Cari Add-on..." style="margin-bottom:10px;">
+            <button onclick="openUserSearchModal()" style="width:100%;" class="sec">🔍 Cari Pengguna (Biodata)</button>
+        </div>
+        
+        <div id="grid"></div>
+        <div id="empty" style="text-align:center; padding:50px; display:none; color:var(--muted);">Tidak ada item ditemukan.</div>
+    </main>
+
+    <div id="userSearchModal" class="modal-backdrop" style="display:none;">
+        <div class="modal-content">
+            <button style="position:absolute; top:15px; right:15px; background:transparent; color:var(--text); padding:0;" onclick="closeUserSearchModal()">✕</button>
+            <h2>🔍 Cari Pengguna</h2>
+            <input type="text" id="userSearchInput" oninput="searchUsers(this.value)" placeholder="Ketik nama username...">
+            <div id="userSearchResults" style="max-height:400px; overflow-y:auto; margin-top:10px;">
+                <p style="text-align:center; color:var(--muted);">Hasil pencarian muncul di sini.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="itemDetailModal" class="modal-backdrop" style="display:none;">
+        <div class="modal-content">
+            <button style="position:absolute; top:15px; right:15px; background:transparent; color:var(--text);" onclick="closeItemDetailModal()">✕</button>
+            <h2 id="detailTitle">Item Title</h2>
+            <div style="margin-bottom:15px;">
+                <img id="detailImg" src="" style="max-width:100%; border-radius:8px;">
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:0.9em;">
+                <span>Kategori: <strong id="detailCat"></strong></span>
+                <span>Uploader: <strong id="detailAuthor"></strong></span>
+            </div>
+            <p style="font-weight:bold;">Deskripsi:</p>
+            <div id="detailDesc" class="md-content" style="margin-top:-5px;"></div>
+            
+            <h4 style="margin-top:20px; border-top:1px solid var(--border); padding-top:15px;">📜 Changelog History</h4>
+            <div id="detailChangelog" style="max-height: 200px; overflow-y: auto;">
+            </div>
+            
+            <h4 style="margin-top:20px; border-top:1px solid var(--border); padding-top:15px;">⭐ Ulasan Pembaca (<span id="reviewCount">0</span>)</h4>
+            <div id="reviewList" style="max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                <p style="text-align:center; color:var(--muted);">Belum ada ulasan. Berikan yang pertama!</p>
+            </div>
+            <div id="reviewFormContainer" style="margin-top:15px; border-top:1px solid var(--border); padding-top:15px;">
+                <p style="font-weight:bold;">Berikan Ulasan Anda:</p>
+                <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+                    <label>Rating:</label>
+                    <select id="reviewRating" style="width:auto; padding:5px;">
+                        <option value="5">⭐⭐⭐⭐⭐</option>
+                        <option value="4">⭐⭐⭐⭐</option>
+                        <option value="3">⭐⭐⭐</option>
+                        <option value="2">⭐⭐</option>
+                        <option value="1">⭐</option>
+                    </select>
+                </div>
+                <textarea id="reviewText" rows="3" placeholder="Tulis ulasan Anda di sini (wajib isi)." required></textarea>
+                <button id="submitReviewBtn" onclick="submitReview(currentDetailItemId)" style="width:100%; margin-top:5px;">Kirim Ulasan</button>
+                <p id="reviewAuthWarning" style="color:var(--danger); text-align:center; margin-top:5px; font-size:0.9em; display:none;">Anda harus login untuk memberikan ulasan.</p>
+            </div>
+            <a id="detailLink" target="_blank" style="display:block; text-align:center; padding:10px; background:var(--success); color:white; border-radius:6px; text-decoration:none; margin-top:15px;">🚀 DOWNLOAD SEKARANG</a>
+        </div>
+    </div>
+
+    <div id="userProfileModal" class="modal-backdrop" style="display:none;">
+        <div class="modal-content">
+            <button style="position:absolute; top:15px; right:15px; background:transparent; color:var(--text);" onclick="$('userProfileModal').style.display='none'">✕</button>
+            <div class="profile-header">
+                <div id="viewProfilePFPContainer" class="profile-icon-container" style="width:100px; height:100px; margin:0 auto 10px;">
+                    <img id="viewProfilePic" src="" alt="PFP">
+                </div>
+                <h2 id="viewProfileName" style="margin:5px 0;">Username</h2>
+                <div id="viewProfileRole" style="font-size:0.9em; color:var(--muted); margin-bottom:10px;">USER</div>
+                <div id="viewSocials" class="social-row"></div>
+            </div>
+            <h4 style="margin-bottom:5px;">📝 Biodata / Deskripsi</h4>
+            <div id="viewProfileBio" class="bio-box md-content"></div>
+            <h4 style="margin-top:20px; margin-bottom:5px; border-top:1px solid var(--border); padding-top:15px;">📦 Portfolio Add-on (<span id="viewTotalItems">0</span>)</h4>
+            <div id="viewUserItems" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:10px;">
+            </div>
+        </div>
+    </div>
+
+    <div id="profileEditModal" class="modal-backdrop" style="display:none;">
+        <div class="modal-content">
+            <button style="float:right; background:transparent; color:var(--text);" onclick="closeProfileEditModal()">✕</button>
+            <h2>🎨 Edit Profil</h2>
+            <div style="text-align:center; margin-bottom:15px;">
+                <div id="editPreviewContainer" class="profile-icon-container" style="width:80px; height:80px; margin:0 auto;">
+                    <img id="editProfilePreview" src="">
+                </div>
+            </div>
+            <div style="display:flex; gap:5px; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+                <button class="sec" onclick="showEditTab('bio')">Bio & Foto</button>
+                <button class="sec" onclick="showEditTab('border')">Border</button>
+                <button class="sec" onclick="showEditTab('social')">Sosial</button>
+            </div>
+            <div id="editTab_bio">
+                <label>Ganti Foto (Max 5MB)</label>
+                <input type="file" id="pfpInput" accept="image/*" onchange="handlePFP(this)">
+                <div id="cropArea" style="display:none; margin-bottom:10px;">
+                    <img id="imgToCrop" style="max-width:100%; display:block;">
+                    <div style="display:flex; gap:5px; margin-top:5px;">
+                        <button onclick="doCrop()">✅ Crop</button>
+                        <button onclick="cancelCrop()" class="dang">Batal</button>
+                    </div>
+                </div>
+                <label>Biodata (Markdown Support)</label>
+                <textarea id="bioInput" rows="5" placeholder="Contoh: **Halo**, saya adalah creator..."></textarea>
+                <button onclick="saveBioPfp()" style="width:100%; margin-top:10px;">Simpan Bio & Foto</button>
+            </div>
+            <div id="editTab_border" style="display:none;">
+                <label>Pilih Gaya Border</label>
+                <div id="customColorArea" style="display:none; background:var(--bg); padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid var(--border);">
+                    <label style="margin-top:0;">Warna Custom Border:</label>
+                    <input type="color" id="customBorderColor" value="#ff0000" oninput="previewCustomBorder(this.value)">
+                </div>
+                <div class="border-grid" id="borderList">
+                    </div>
+                <button onclick="saveBorder()" style="width:100%; margin-top:15px;">Simpan Border</button>
+            </div>
+            <div id="editTab_social" style="display:none;">
+                <label>Discord Link</label>
+                <input type="url" id="soc_discord" placeholder="https://discord.gg/...">
+                <label>WhatsApp Link (wa.me)</label>
+                <input type="url" id="soc_whatsapp" placeholder="https://wa.me/62...">
+                <label>YouTube Channel</label>
+                <input type="url" id="soc_youtube" placeholder="https://youtube.com/...">
+                <button onclick="saveSocials()" style="width:100%; margin-top:10px;">Simpan Link</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="uploadModal" class="modal-backdrop" style="display:none;">
+        <div class="modal-content">
+            <button style="float:right; background:transparent;" onclick="$('uploadModal').style.display='none'; currentEditItemId=null;">✕</button>
+            <h2 id="uploadModalTitle">Upload Add-on</h2>
+            <form id="itemForm" onsubmit="event.preventDefault(); submitItem();">
+                <input type="hidden" id="itemIdHidden">
+                <input type="text" id="upTitle" placeholder="Judul" required>
+                <textarea id="upDesc" placeholder="Deskripsi (Gunakan 2x Enter untuk baris baru)" required></textarea>
+                <label>Kategori</label>
+                <select id="upCat"></select>
+                <label>Gambar Cover (Kosongkan jika tidak diubah)</label>
+                <input type="file" id="upImg" accept="image/*" onchange="handleUpImg(this)">
+                
+                <h4 style="margin-top:10px;" id="changelogHeader">Catatan Pembaruan Terakhir (Wajib Isi saat Update)</h4>
+                <textarea id="upChangelog" rows="3" placeholder="Contoh: Perbaikan bug crash saat membuka menu, penambahan 5 item baru."></textarea>
+                
+                <label>Link Download</label>
+                <input type="url" id="upLink" placeholder="https://..." required>
+                <button type="submit" id="submitItemBtn" style="width:100%; margin-top:10px;">Posting</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="categoryModal" class="modal-backdrop" style="display:none;">
+        <div class="modal-content" style="max-width: 450px;">
+            <button style="position:absolute; top:15px; right:15px; background:transparent; color:var(--text); padding:0;" onclick="closeCategoryModal()">✕</button>
+            <h2>⚙️ Manajemen Kategori</h2>
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <input type="text" id="newCatInput" placeholder="Nama Kategori Baru">
+                <button onclick="addCategory()" style="flex-shrink:0;">Tambah</button>
+            </div>
+            
+            <div id="categoryList" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 10px;">
+                </div>
+            
+            <div style="margin-top:15px; text-align:right;">
+                <button class="dang" onclick="resetCategories()">Reset ke Default</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+        import { getDatabase, ref, onValue, set, push, update } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-database.js";
+
+        const $ = id => document.getElementById(id);
+        
+        const firebaseConfig = {
+          apiKey: "AIzaSyBcYhpGSSEImXWov92ievzBgHrvODa0b1M",
+          authDomain: "visualmcraft.firebaseapp.com",
+          databaseURL: "https://visualmcraft-default-rtdb.asia-southeast1.firebasedatabase.app/",
+          projectId: "visualmcraft",
+          storageBucket: "visualmcraft.firebasestorage.app",
+          messagingSenderId: "699644931018",
+          appId: "1:699644931018:web:1560a9e10885ee8ee97d33"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const auth = getAuth(app);
+
+        let allUsers = {};
+        let allItems = [];
+        let allCategories = ['Add-on', 'Map', 'Texture']; 
+        let cropper = null;
+        let currentPfpBase64 = null;
+        let currentUploadImg = null;
+        let selectedBorder = 'default';
+        let currentEditItemId = null; 
+        let currentDetailItemId = null; // NEW: Untuk melacak ID saat modal detail/ulasan terbuka
+
+        const DEFAULT_CATEGORIES = ['Add-on', 'Map', 'Texture'];
+
+        // --- BORDERS (No Change) ---
+        const BORDERS = {
+            'default': { name: 'Default', class: 'border-default' },
+            'custom': { name: 'CUSTOM 🎨', class: 'border-custom' },
+            'gold': { name: 'Gold', class: 'border-gold' },
+            'galaxy': { name: 'Galaxy', class: 'border-galaxy' },
+            'fire': { name: 'Fire', class: 'border-fire' },
+            'ice': { name: 'Ice', class: 'border-ice' },
+            'nature': { name: 'Nature', class: 'border-nature' },
+            'neon_red': { name: 'Neon Red', class: 'border-neon-red' },
+            'neon_blue': { name: 'Neon Blue', class: 'border-neon-blue' },
+            'matrix': { name: 'Matrix', class: 'border-matrix' },
+            'rainbow_spin': { name: 'Rainbow', class: 'border-rainbow-spin' },
+            'thunder': { name: 'Thunder', class: 'border-thunder' },
+            'sunset': { name: 'Sunset', class: 'border-sunset' },
+            'ocean': { name: 'Ocean', class: 'border-ocean' },
+            'glitch': { name: 'Glitch', class: 'border-glitch' },
+            'pinky': { name: 'Pinky', class: 'border-pinky' },
+            'dark': { name: 'Dark Soul', class: 'border-dark' },
+            'holy': { name: 'Holy', class: 'border-holy' },
+            'toxic': { name: 'Toxic', class: 'border-toxic' },
+            'rgb_flow': { name: 'RGB Flow', class: 'border-rgb-flow' },
+            // 15 BORDER BARU (21-35)
+            'pulse_blue': { name: 'Pulse Blue', class: 'border-pulse-blue' },
+            'scanline': { name: 'Scanline', class: 'border-scanline' },
+            'ethereal': { name: 'Ethereal', class: 'border-ethereal' },
+            'neon_green': { name: 'Neon Green', class: 'border-neon-green' },
+            'dual_tone': { name: 'Dual Tone', class: 'border-dual-tone' },
+            'square_wave': { name: 'Square Wave', class: 'border-square-wave' },
+            'bubblegum': { name: 'Bubble Gum', class: 'border-bubblegum' },
+            'aqua': { name: 'Aqua Flow', class: 'border-aqua' },
+            'retro_tv': { name: 'Retro TV', class: 'border-retro-tv' },
+            'sunbeam': { name: 'Sunbeam', class: 'border-sunbeam' },
+            'plasma': { name: 'Plasma', class: 'border-plasma' },
+            'pulse_yellow': { name: 'Pulse Yellow', class: 'border-pulse-yellow' },
+            'wave': { name: 'Wave', class: 'border-wave' },
+            'dark_neon': { name: 'Dark Neon', class: 'border-dark-neon' },
+            'fade_in': { name: 'Fade In', class: 'border-fade-in' }
+        };
+
+        // --- INIT & LISTENERS ---
+        function init() {
+            onValue(ref(db, 'users'), s => { 
+                allUsers = s.val() || {}; 
+                checkAuthUI(); 
+            });
+            onValue(ref(db, 'items'), s => { 
+                const o = s.val() || {}; 
+                allItems = Object.keys(o).map(k => {
+                    const item = { id:k, ...o[k] };
+                    // FIX: Perbaikan bug detail/changelog undefined: pastikan changelog selalu array.
+                    item.changelog = Array.isArray(item.changelog) ? item.changelog : []; 
+                    return item;
+                }).reverse();
+                render();
+            });
+            onValue(ref(db, 'categories'), s => {
+                const cats = s.val();
+                if (cats && cats.length > 0) {
+                    allCategories = cats;
+                } else {
+                    set(ref(db, 'categories'), DEFAULT_CATEGORIES);
+                    allCategories = DEFAULT_CATEGORIES;
+                }
+                renderCategoryDropdown();
+                renderCategoryList(); 
+            });
+            onAuthStateChanged(auth, u => { checkAuthUI(); });
+            renderBorderOptions();
+        }
+
+        // --- AUTH & UI (No Change) ---
+        function checkAuthUI() {
+            const u = auth.currentUser;
+            $('ownerTools').style.display = 'none';
+            if (u) {
+                const d = allUsers[u.uid] || {};
+                $('authBox').style.display = 'none';
+                $('userBox').style.display = 'block';
+                $('uName').textContent = d.username || 'User';
+                $('sidebarPFP').querySelector('img').src = d.pfp || 'https://via.placeholder.com/100';
+                applyBorder('sidebarPFP', d.border, d.customColor);
+                if (d.role === 'owner') {
+                    $('ownerTools').style.display = 'block';
+                    showOwnerTab('users'); 
+                }
+            } else {
+                $('authBox').style.display = 'block';
+                $('userBox').style.display = 'none';
+            }
+        }
+        async function register() {
+          const u = $('userIn').value.trim(), p = $('passIn').value;
+          if (u.includes('@')) return alert('Username tidak boleh mengandung karakter @');
+          if (!u || !p || p.length < 6) return alert('Lengkapi data (password min 6 karakter)');
+          try {
+            const isUsernameTaken = Object.values(allUsers).some(user => user.username && user.username.toLowerCase() === u.toLowerCase());
+            if(isUsernameTaken) return alert('Username sudah terdaftar.');
+            const userCredential = await createUserWithEmailAndPassword(auth, u + '@vcm.com', p);
+            const uid = userCredential.user.uid;
+            await set(ref(db, `${DB_USERS}/${uid}`), {
+                username: u, role: 'user', banned: false, profilePic: DEFAULT_PFP, profileBorder: 'default', socials: DEFAULT_USER_SOCIALS 
+            });
+            alert('Berhasil daftar. Silakan login.');
+            $('userIn').value = ''; $('passIn').value = '';
+          } catch(error) {
+            alert('Gagal daftar: ' + error.message);
+          }
+        }
+        async function login() {
+          const u = $('userIn').value.trim(), p = $('passIn').value;
+          try {
+            const usersArray = Object.values(allUsers);
+            const userDb = usersArray.find(user => user.username === u);
+            if (userDb && userDb.banned) return alert("AKUN ANDA DIBANNED! Hubungi Owner.");
+            await signInWithEmailAndPassword(auth, u + '@vcm.com', p);
+            if(window.innerWidth < 820) toggleSide();
+          } catch(error) {
+            alert('Login Gagal: Username atau Password salah.');
+          }
+        }
+        window.login = login; 
+        window.register = register;
+        window.logout = () => signOut(auth);
+
+        // --- OWNER PANEL LOGIC (No Change) ---
+        window.showOwnerTab = (tab) => {
+            const content = $('ownerTabContent');
+            content.innerHTML = '';
+            if (tab === 'users') {
+                content.innerHTML = '<h4>Daftar Pengguna</h4>';
+                const userList = document.createElement('div');
+                userList.style.maxHeight = '200px'; userList.style.overflowY = 'auto'; userList.style.border = '1px solid var(--border)'; userList.style.borderRadius = '6px';
+                Object.keys(allUsers).forEach(uid => {
+                    const u = allUsers[uid];
+                    const div = document.createElement('div');
+                    div.style = 'padding: 8px 10px; border-bottom: 1px dashed var(--border); display:flex; justify-content:space-between; align-items:center; background:var(--bg);';
+                    if (uid === auth.currentUser.uid) div.style.background = 'rgba(139, 92, 246, 0.2)';
+                    div.innerHTML = `
+                        <span style="font-size:0.9em;">
+                            ${u.username} 
+                            (<strong style="color:${u.role === 'owner' ? 'var(--warn)' : 'var(--success)'};">${u.role.toUpperCase()}</strong>)
+                        </span>
+                        <div style="display:flex; gap:5px;">
+                            ${uid !== auth.currentUser.uid ? `
+                                <button class="sec" style="padding:4px 8px; font-size:0.7em;" onclick="changeUserRole('${uid}', 'owner')">👑 Owner</button>
+                                <button class="dang" style="padding:4px 8px; font-size:0.7em;" onclick="changeUserRole('${uid}', 'user')">👤 User</button>
+                            ` : `<small style="color:var(--muted);">Anda</small>`}
+                        </div>
+                    `;
+                    userList.appendChild(div);
+                });
+                content.appendChild(userList);
+            }
+        };
+        window.changeUserRole = async (uid, newRole) => {
+            if (!auth.currentUser || allUsers[auth.currentUser.uid].role !== 'owner') {
+                return alert('Hanya Owner yang dapat melakukan ini.');
+            }
+            if (auth.currentUser.uid === uid) {
+                return alert('Anda tidak bisa mengubah role Anda sendiri.');
+            }
+            await update(ref(db, `users/${uid}`), { role: newRole });
+            alert(`Role ${allUsers[uid].username} diubah menjadi ${newRole.toUpperCase()}`);
+        };
+
+        // --- CATEGORY MANAGEMENT LOGIC (No Change) ---
+        window.openCategoryModal = () => {
+            if (!auth.currentUser || allUsers[auth.currentUser.uid].role !== 'owner') return alert('Hanya Owner yang dapat mengakses ini.');
+            $('categoryModal').style.display = 'flex';
+            renderCategoryList();
+        };
+        window.closeCategoryModal = () => {
+            $('categoryModal').style.display = 'none';
+        };
+        function renderCategoryDropdown() {
+            const select = $('upCat');
+            if(!select) return;
+            select.innerHTML = '';
+            allCategories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                select.appendChild(opt);
+            });
+        }
+        function renderCategoryList() {
+            const list = $('categoryList');
+            list.innerHTML = '';
+            if (allCategories.length === 0) {
+                list.innerHTML = '<p style="text-align:center; color:var(--muted);">Tidak ada kategori. Silakan tambahkan atau reset.</p>';
+                return;
+            }
+            allCategories.forEach((cat, index) => {
+                const div = document.createElement('div');
+                div.style = 'display:flex; justify-content:space-between; align-items:center; padding:8px; border-bottom:1px solid var(--border);';
+                div.innerHTML = `
+                    <span>${cat}</span>
+                    <div style="display:flex; gap:5px;">
+                        <button style="padding:4px 8px; font-size:0.7em; background:var(--warn);" onclick="editCategory(${index}, '${cat}')">Edit</button>
+                        <button style="padding:4px 8px; font-size:0.7em; background:var(--danger);" onclick="removeCategory(${index})">Hapus</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+        window.addCategory = async () => {
+            const newCat = $('newCatInput').value.trim();
+            if (!newCat) return alert('Nama kategori tidak boleh kosong.');
+            if (allCategories.includes(newCat)) return alert('Kategori sudah ada.');
+            allCategories.push(newCat);
+            await set(ref(db, 'categories'), allCategories);
+            $('newCatInput').value = '';
+            alert('Kategori berhasil ditambahkan.');
+            renderCategoryList();
+        };
+        window.editCategory = async (index, oldName) => {
+            const newName = prompt(`Edit nama kategori "${oldName}":`, oldName);
+            if (newName === null) return; 
+            const trimmedName = newName.trim();
+            if (!trimmedName || trimmedName === oldName) return;
+            if (allCategories.includes(trimmedName)) return alert('Kategori sudah ada.');
+            allCategories[index] = trimmedName;
+            await set(ref(db, 'categories'), allCategories);
+            alert(`Kategori "${oldName}" diubah menjadi "${trimmedName}".`);
+            renderCategoryList();
+        };
+        window.removeCategory = async (index) => {
+            if (confirm(`Yakin ingin menghapus kategori "${allCategories[index]}"?`)) {
+                allCategories.splice(index, 1);
+                await set(ref(db, 'categories'), allCategories);
+                alert('Kategori berhasil dihapus.');
+                renderCategoryList();
+            }
+        };
+        window.resetCategories = async () => {
+            if (confirm('Yakin ingin mereset kategori ke default (Add-on, Map, Texture)?')) {
+                await set(ref(db, 'categories'), DEFAULT_CATEGORIES);
+                alert('Kategori berhasil direset.');
+            }
+        };
+
+
+        // --- MARKETPLACE INTERACTION (DETAIL, EDIT, REMOVE) ---
+        window.openItemDetailModal = (itemId) => {
+            const item = allItems.find(i => i.id === itemId);
+            if (!item) return alert('Item tidak ditemukan.');
+            
+            currentDetailItemId = itemId; // SET ID untuk fungsi ulasan
+            
+            $('detailTitle').textContent = item.title;
+            $('detailImg').src = item.img;
+            $('detailCat').textContent = item.cat;
+            $('detailAuthor').textContent = item.author;
+            $('detailLink').href = item.link;
+            
+            // Gunakan marked.parse untuk mendukung multiline/Markdown
+            $('detailDesc').innerHTML = marked.parse(item.desc || 'Tidak ada deskripsi.'); 
+
+            // Render Changelog
+            const changelogBox = $('detailChangelog');
+            changelogBox.innerHTML = '';
+            
+            const logs = item.changelog; // Sudah dipastikan Array di init()
+            if (logs.length === 0) {
+                changelogBox.innerHTML = '<p style="color:var(--muted); text-align:center;">Tidak ada riwayat pembaruan.</p>';
+            } else {
+                logs.slice().reverse().forEach((log, index) => {
+                    const updateNumber = logs.length - index; 
+                    const date = new Date(log.timestamp).toLocaleDateString('id-ID');
+                    
+                    const div = document.createElement('div');
+                    div.className = 'changelog-entry';
+                    div.innerHTML = `
+                        <div class="changelog-version">
+                            <span>Update ke-${updateNumber}</span>
+                            <small style="color:var(--muted);">${date}</small>
+                        </div>
+                        <p style="font-size:0.9em; margin:5px 0 0;">${log.text}</p>
+                    `;
+                    changelogBox.appendChild(div);
+                });
+            }
+
+            renderReviews(itemId); // Panggil fungsi render ulasan
+            
+            $('itemDetailModal').style.display = 'flex';
+        };
+
+        window.closeItemDetailModal = () => {
+            $('itemDetailModal').style.display = 'none';
+            currentDetailItemId = null;
+        };
+
+        window.openItemEditModal = (itemId) => {
+            if (!auth.currentUser) return alert('Silakan login.');
+            const item = allItems.find(i => i.id === itemId);
+            const u = allUsers[auth.currentUser.uid];
+            
+            if (u.role !== 'owner' && auth.currentUser.uid !== item.authorId) {
+                return alert('Anda tidak memiliki izin untuk mengedit item ini.');
+            }
+
+            currentEditItemId = itemId;
+            $('uploadModalTitle').textContent = '📝 Edit Add-on';
+            $('submitItemBtn').textContent = 'Simpan Perubahan';
+            $('changelogHeader').textContent = 'Catatan Pembaruan Terakhir (Wajib Isi saat Update)'; 
+            $('upImg').required = false; 
+
+            // Isi form
+            $('itemIdHidden').value = item.id;
+            $('upTitle').value = item.title;
+            $('upDesc').value = item.desc;
+            $('upCat').value = item.cat;
+            $('upLink').value = item.link;
+            $('upChangelog').value = ''; 
+            currentUploadImg = item.img; 
+
+            $('uploadModal').style.display = 'flex';
+        };
+
+        window.removeItem = async (itemId) => {
+            if (!auth.currentUser) return alert('Silakan login.');
+            const u = allUsers[auth.currentUser.uid];
+            const item = allItems.find(i => i.id === itemId);
+
+            if (u.role !== 'owner' && auth.currentUser.uid !== item.authorId) {
+                return alert('Anda tidak memiliki izin untuk menghapus item ini.');
+            }
+
+            if (confirm(`Yakin ingin menghapus item "${item.title}"? Tindakan ini permanen.`)) {
+                await set(ref(db, `items/${itemId}`), null);
+                alert('Item berhasil dihapus.');
+            }
+        };
+
+        // --- NEW: REVIEW/RATING LOGIC ---
+        function renderReviews(itemId) {
+            const item = allItems.find(i => i.id === itemId);
+            const reviewList = $('reviewList');
+            const reviewCount = $('reviewCount');
+            const formContainer = $('reviewFormContainer');
+            const authWarning = $('reviewAuthWarning');
+            const submitBtn = $('submitReviewBtn');
+            reviewList.innerHTML = '';
+            
+            const reviews = Object.values(item.reviews || {});
+            reviewCount.textContent = reviews.length;
+            
+            if (reviews.length === 0) {
+                reviewList.innerHTML = '<p style="text-align:center; color:var(--muted);">Belum ada ulasan. Berikan yang pertama!</p>';
+            } else {
+                reviews.sort((a,b) => b.timestamp - a.timestamp).forEach(r => {
+                    const div = document.createElement('div');
+                    div.style = 'background:var(--bg); padding:10px; border-radius:6px; margin-bottom:5px; border:1px solid var(--border);';
+                    div.innerHTML = `
+                        <div style="font-weight:bold;">${r.username} - <span style="color:var(--star);">${'⭐'.repeat(r.rating)}</span></div>
+                        <p style="font-size:0.9em; margin:5px 0 0;">${r.text}</p>
+                        <small style="color:var(--muted); font-size:0.7em;">${new Date(r.timestamp).toLocaleDateString('id-ID')}</small>
+                    `;
+                    reviewList.appendChild(div);
+                });
+            }
+            
+            // Kontrol visibilitas form ulasan
+            const reviewTextarea = $('reviewText');
+            const reviewRatingSelect = $('reviewRating');
+            reviewTextarea.disabled = false; reviewRatingSelect.disabled = false;
+            reviewTextarea.placeholder = 'Tulis ulasan Anda di sini (wajib isi).';
+
+            if (auth.currentUser) {
+                authWarning.style.display = 'none';
+                submitBtn.style.display = 'block';
+
+                // Cek jika user sudah pernah mengulas
+                const userReview = reviews.find(r => r.userId === auth.currentUser.uid);
+                if (userReview) {
+                    submitBtn.textContent = 'Perbarui Ulasan';
+                    reviewTextarea.value = userReview.text;
+                    reviewRatingSelect.value = userReview.rating;
+                } else {
+                    submitBtn.textContent = 'Kirim Ulasan';
+                    reviewTextarea.value = '';
+                    reviewRatingSelect.value = '5';
+                }
+            } else {
+                authWarning.style.display = 'block';
+                submitBtn.style.display = 'none';
+                reviewTextarea.disabled = true;
+                reviewRatingSelect.disabled = true;
+                reviewTextarea.value = '';
+                reviewTextarea.placeholder = 'Anda harus login untuk menulis ulasan.';
+            }
+        }
+
+        window.submitReview = async (itemId) => {
+            if (!auth.currentUser) return alert('Silakan login untuk memberikan ulasan.');
+            const reviewText = $('reviewText').value.trim();
+            const rating = parseInt($('reviewRating').value);
+            
+            if (reviewText.length < 5) return alert('Ulasan minimal 5 karakter.');
+            
+            const u = allUsers[auth.currentUser.uid];
+            const item = allItems.find(i => i.id === itemId);
+            
+            // Cari ID ulasan yang sudah ada (jika melakukan update)
+            const existingReviewId = Object.keys(item.reviews || {}).find(k => item.reviews[k].userId === auth.currentUser.uid);
+            
+            const reviewData = {
+                userId: auth.currentUser.uid,
+                username: u.username,
+                rating: rating,
+                text: reviewText,
+                timestamp: Date.now()
+            };
+            
+            try {
+                if (existingReviewId) {
+                    // Update ulasan yang sudah ada
+                    await update(ref(db, `items/${itemId}/reviews/${existingReviewId}`), reviewData);
+                } else {
+                    // Post ulasan baru
+                    await push(ref(db, `items/${itemId}/reviews`), reviewData);
+                }
+                alert('Ulasan berhasil dikirim/diperbarui!');
+                
+                // Tutup dan buka kembali modal untuk me-refresh data (ini akan memicu init listener)
+                closeItemDetailModal();
+                // Setelah data refresh, modal akan dibuka kembali oleh user dengan data baru
+                
+            } catch (e) {
+                alert('Gagal mengirim ulasan: ' + e.message);
+            }
+        };
+
+        // --- VIEW PROFILE (BIODATA) - No Change) ---
+        window.openUserProfileModal = (uid) => {
+            const u = allUsers[uid];
+            if (!u) return alert('User tidak ditemukan');
+            $('userSearchModal').style.display = 'none';
+            $('userProfileModal').style.display = 'flex';
+            $('viewProfileName').textContent = u.username;
+            $('viewProfileRole').textContent = (u.role || 'user').toUpperCase();
+            $('viewProfilePic').src = u.pfp || 'https://via.placeholder.com/100';
+            applyBorder('viewProfilePFPContainer', u.border, u.customColor);
+            if (u.role === 'owner') $('viewProfileRole').style.color = 'var(--warn)';
+            else $('viewProfileRole').style.color = 'var(--muted)';
+            const socBox = $('viewSocials'); socBox.innerHTML = '';
+            const s = u.socials || {};
+            if(s.discord && s.discord.includes('discord')) socBox.innerHTML += `<a href="${s.discord}" target="_blank" class="social-btn sb-dc">Discord</a>`;
+            if(s.whatsapp && s.whatsapp.includes('wa.me')) socBox.innerHTML += `<a href="${s.whatsapp}" target="_blank" class="social-btn sb-wa">WhatsApp</a>`;
+            if(s.youtube && s.youtube.includes('youtube')) socBox.innerHTML += `<a href="${s.youtube}" target="_blank" class="social-btn sb-yt">YouTube</a>`;
+            $('viewProfileBio').innerHTML = marked.parse(u.bio || '_Tidak ada biodata._');
+            const items = allItems.filter(i => i.authorId === uid);
+            $('viewTotalItems').textContent = items.length;
+            const listBox = $('viewUserItems'); listBox.innerHTML = '';
+            if (items.length === 0) listBox.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--muted); font-size:0.9em;">Belum ada item.</div>';
+            items.forEach(i => {
+                const div = document.createElement('div');
+                div.style = 'background:var(--bg); border:1px solid var(--border); border-radius:6px; overflow:hidden; cursor:pointer;';
+                div.innerHTML = `
+                    <div style="height:80px; background:#000;"><img src="${i.img}"></div>
+                    <div style="padding:5px; font-size:0.8em; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${i.title}</div>
+                `;
+                div.onclick = () => openItemDetailModal(i.id); 
+                listBox.appendChild(div);
+            });
+        };
+
+        // --- SEARCH USER LOGIC (No Change) ---
+        window.openUserSearchModal = () => $('userSearchModal').style.display = 'flex';
+        window.closeUserSearchModal = () => {
+            $('userSearchModal').style.display = 'none';
+            $('userSearchInput').value = ''; 
+            $('userSearchResults').innerHTML = '<p style="text-align:center; color:var(--muted);">Hasil pencarian muncul di sini.</p>';
+        };
+        window.searchUsers = (q) => {
+            const list = $('userSearchResults'); list.innerHTML = '';
+            const term = q.toLowerCase().trim();
+            if (term.length < 2) return list.innerHTML = '<p style="text-align:center; color:var(--muted);">Ketik minimal 2 huruf...</p>';
+            const matches = Object.keys(allUsers).filter(k => 
+                allUsers[k].username && allUsers[k].username.toLowerCase().includes(term)
+            );
+            if (matches.length === 0) return list.innerHTML = '<p style="text-align:center; color:var(--muted);">Tidak ditemukan.</p>';
+            matches.forEach(uid => {
+                const u = allUsers[uid];
+                const div = document.createElement('div');
+                div.style = 'background:var(--bg); padding:10px; border-radius:8px; display:flex; align-items:center; gap:10px; margin-bottom:5px; cursor:pointer; border:1px solid var(--border);';
+                div.onclick = () => openUserProfileModal(uid);
+                const borderClass = (BORDERS[u.border] || BORDERS.default).class;
+                div.innerHTML = `
+                    <div class="profile-icon-container ${borderClass}" style="width:40px; height:40px; padding:2px;">
+                        <img src="${u.pfp || 'https://via.placeholder.com/100'}" style="width:100%; height:100%; border-radius:50%;">
+                    </div>
+                    <div>
+                        <div style="font-weight:bold;">${u.username}</div>
+                        <div style="font-size:0.8em; color:var(--muted);">${(u.role||'user').toUpperCase()}</div>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        };
+
+        // --- MARKETPLACE RENDER (No Change) ---
+        window.render = () => {
+            const t = $('search').value.toLowerCase();
+            const g = $('grid'); g.innerHTML = '';
+            const f = allItems.filter(i => i.title.toLowerCase().includes(t));
+            const u = auth.currentUser;
+            const isOwner = u && allUsers[u.uid] && allUsers[u.uid].role === 'owner';
+
+            if(!f.length) $('empty').style.display = 'block';
+            else {
+                $('empty').style.display = 'none';
+                f.forEach(i => {
+                    const d = document.createElement('div'); d.className = 'item';
+                    
+                    const isUploader = u && u.uid === i.authorId;
+                    let actionButtons = '';
+                    
+                    if (isOwner || isUploader) {
+                        actionButtons = `
+                            <div style="display:flex; gap:5px; margin-top:10px;">
+                                <button onclick="openItemEditModal('${i.id}')" style="flex:1; padding:5px; font-size:0.8em; background:var(--warn);">Edit</button>
+                                <button onclick="removeItem('${i.id}')" style="flex:1; padding:5px; font-size:0.8em; background:var(--danger);">Remove</button>
+                            </div>
+                        `;
+                    }
+
+                    d.innerHTML = `
+                        <div class="item-img"><img src="${i.img}"></div>
+                        <div class="item-body">
+                            <div style="font-weight:bold; font-size:1.1em;">${i.title}</div>
+                            <div style="font-size:0.9em; color:var(--accent); cursor:pointer;" onclick="openUserProfileModal('${i.authorId}')">by ${i.author}</div>
+                            
+                            <button onclick="openItemDetailModal('${i.id}')" style="width:100%; padding:8px; font-size:0.9em; margin-top:10px;">Detail</button>
+                            
+                            ${actionButtons}
+                        </div>
+                    `;
+                    g.appendChild(d);
+                });
+            }
+        };
+
+        // --- UPLOAD / SUBMIT (Perbaikan Bug Edit) ---
+        window.tryUploadModal = () => {
+            if(!auth.currentUser) return alert('Login dulu');
+            
+            const rules = `
+                ATURAN UPLOAD:
+                1. Dilarang mengupload konten ilegal/berbau SARA.
+                2. Wajib mencantumkan link download yang valid.
+                3. Gunakan gambar cover yang sesuai.
+                4. Kami berhak menghapus konten tanpa peringatan.
+            `;
+            if (!confirm(rules)) return;
+            
+            currentEditItemId = null;
+            $('uploadModalTitle').textContent = 'Upload Add-on';
+            $('submitItemBtn').textContent = 'Posting';
+            $('changelogHeader').textContent = 'Catatan Pembaruan Awal'; 
+            $('itemIdHidden').value = '';
+            $('upTitle').value = ''; $('upDesc').value = ''; $('upLink').value = ''; 
+            $('upImg').value = ''; $('upImg').required = true;
+            $('upChangelog').value = 'Initial Release.'; 
+            currentUploadImg = null;
+
+            $('uploadModal').style.display = 'flex';
+        };
+
+        window.handleUpImg = (i) => {
+            const f = i.files[0];
+            const r = new FileReader();
+            r.onload = e => currentUploadImg = e.target.result;
+            r.readAsDataURL(f);
+        };
+
+        window.submitItem = async () => {
+            if(!currentUploadImg) return alert('Gambar cover wajib.');
+            const logText = $('upChangelog').value.trim();
+            if (!logText) return alert('Catatan Pembaruan wajib diisi.');
+            
+            const baseData = {
+                title: $('upTitle').value, desc: $('upDesc').value, cat: $('upCat').value,
+                link: $('upLink').value, img: currentUploadImg,
+                authorId: auth.currentUser.uid, author: allUsers[auth.currentUser.uid].username
+            };
+            
+            try {
+                if (currentEditItemId) {
+                    // Mode EDIT
+                    const item = allItems.find(i => i.id === currentEditItemId);
+                    
+                    // FIX: Lebih robust, meskipun sudah diatasi di init()
+                    const currentChangelog = Array.isArray(item.changelog) ? item.changelog : []; 
+                    const newLog = { text: logText, timestamp: Date.now() };
+                    
+                    const updates = { 
+                        ...baseData,
+                        changelog: [...currentChangelog, newLog]
+                    };
+
+                    await update(ref(db, `items/${currentEditItemId}`), updates);
+                    alert('Item berhasil diupdate!');
+                } else {
+                    // Mode UPLOAD BARU
+                    const data = {
+                        ...baseData,
+                        changelog: [{text: logText, timestamp: Date.now()}] 
+                    };
+                    await push(ref(db, 'items'), data);
+                    alert('Item berhasil di-posting!');
+                }
+            } catch (error) {
+                console.error("Error submitting item:", error);
+                alert("Gagal memposting/mengupdate item. Cek koneksi atau coba lagi.");
+                return;
+            }
+            
+            $('uploadModal').style.display = 'none';
+            // Clear input
+            $('upTitle').value = ''; $('upDesc').value = ''; $('upLink').value = ''; $('upImg').value = ''; 
+            currentUploadImg = null; currentEditItemId = null; $('upChangelog').value = '';
+        };
+
+        // --- UI Helpers (No Change) ---
+        window.toggleSide = () => { $('sidePanel').classList.toggle('open'); $('overlay').classList.toggle('open'); };
+        window.setTheme = (t) => document.body.className = (t === 'light' ? 'light-theme' : '');
+        function applyBorder(elId, borderKey, customColor) {
+            const el = $(elId);
+            if (!el) return;
+            el.className = 'profile-icon-container';
+            el.style.borderColor = ''; el.style.boxShadow = '';
+            const b = BORDERS[borderKey] || BORDERS['default'];
+            el.classList.add(b.class);
+            if (borderKey === 'custom' && customColor) {
+                el.style.border = `3px solid ${customColor}`;
+                el.style.boxShadow = `0 0 15px ${customColor}`;
+            }
+        }
+        function renderBorderOptions() {
+            const c = $('borderList'); if (!c) return; c.innerHTML = '';
+            Object.keys(BORDERS).forEach(k => {
+                const b = BORDERS[k];
+                const div = document.createElement('div');
+                div.className = 'border-option';
+                div.onclick = () => selectBorder(k);
+                div.innerHTML = `
+                    <div class="profile-icon-container ${b.class} border-preview-sm" id="preview_${k}">
+                        <img src="${$('profileIcon').src}">
+                    </div>
+                    <div style="font-size:10px; margin-top:5px;">${b.name}</div>
+                `;
+                c.appendChild(div);
+            });
+        }
+        window.selectBorder = (k) => {
+            selectedBorder = k;
+            document.querySelectorAll('.border-option').forEach(e => e.classList.remove('active'));
+            const index = Object.keys(BORDERS).indexOf(k);
+            if (index > -1) document.querySelector(`.border-option:nth-child(${index + 1})`).classList.add('active');
+            $('customColorArea').style.display = (k === 'custom') ? 'block' : 'none';
+            const color = $('customBorderColor').value;
+            applyBorder('editPreviewContainer', k, color);
+        };
+        window.previewCustomBorder = (color) => {
+            if (selectedBorder === 'custom') {
+                applyBorder('editPreviewContainer', 'custom', color);
+            }
+        };
+        window.saveBorder = async () => {
+            if (!auth.currentUser) return;
+            const updates = { border: selectedBorder };
+            if (selectedBorder === 'custom') {
+                updates.customColor = $('customBorderColor').value;
+            }
+            await update(ref(db, `users/${auth.currentUser.uid}`), updates);
+            alert('Border disimpan!');
+        };
+        window.openProfileEditModal = () => {
+            if (!auth.currentUser) return;
+            const d = allUsers[auth.currentUser.uid];
+            $('profileEditModal').style.display = 'flex';
+            $('editProfilePreview').src = d.pfp || 'https://via.placeholder.com/100';
+            $('bioInput').value = d.bio || '';
+            $('soc_discord').value = d.socials?.discord || '';
+            $('soc_whatsapp').value = d.socials?.whatsapp || '';
+            $('soc_youtube').value = d.socials?.youtube || '';
+            selectedBorder = d.border || 'default';
+            if(d.customColor) $('customBorderColor').value = d.customColor;
+            applyBorder('editPreviewContainer', selectedBorder, d.customColor);
+            document.querySelectorAll('.border-option').forEach(e => e.classList.remove('active'));
+            const index = Object.keys(BORDERS).indexOf(selectedBorder);
+            if (index > -1) document.querySelector(`.border-option:nth-child(${index + 1})`).classList.add('active');
+            $('customColorArea').style.display = (selectedBorder === 'custom') ? 'block' : 'none';
+            showEditTab('bio'); 
+        };
+        window.showEditTab = (t) => {
+            ['bio', 'border', 'social'].forEach(x => $('editTab_'+x).style.display = 'none');
+            $('editTab_'+t).style.display = 'block';
+        };
+        window.closeProfileEditModal = () => $('profileEditModal').style.display = 'none';
+        window.saveBioPfp = async () => {
+            if (!auth.currentUser) return;
+            const updates = { bio: $('bioInput').value };
+            if (currentPfpBase64) updates.pfp = currentPfpBase64;
+            await update(ref(db, `users/${auth.currentUser.uid}`), updates);
+            alert('Bio & Foto disimpan!');
+            currentPfpBase64 = null; 
+        };
+        window.saveSocials = async () => {
+            if (!auth.currentUser) return;
+            const socials = {
+                discord: $('soc_discord').value,
+                whatsapp: $('soc_whatsapp').value,
+                youtube: $('soc_youtube').value
+            };
+            await update(ref(db, `users/${auth.currentUser.uid}`), { socials });
+            alert('Sosial media disimpan!');
+        };
+        window.handlePFP = (input) => {
+            const f = input.files[0];
+            if (!f) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                $('cropArea').style.display = 'block';
+                $('imgToCrop').src = e.target.result;
+                if(cropper) cropper.destroy();
+                cropper = new Cropper($('imgToCrop'), { aspectRatio: 1, viewMode: 1 });
+            };
+            reader.readAsDataURL(f);
+        };
+        window.doCrop = () => {
+            if(!cropper) return;
+            currentPfpBase64 = cropper.getCroppedCanvas({width:200, height:200}).toDataURL('image/jpeg', 0.8);
+            $('editProfilePreview').src = currentPfpBase64;
+            $('cropArea').style.display = 'none';
+            cropper.destroy(); cropper = null;
+        };
+        window.cancelCrop = () => {
+            $('cropArea').style.display = 'none';
+            if(cropper) cropper.destroy();
+            $('pfpInput').value = '';
+        };
+
+        init();
+    </script>
+</body>
+</html>
