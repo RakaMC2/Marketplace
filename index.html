@@ -379,7 +379,9 @@
 
         <div id="grid" class="grid">
             </div>
-        
+
+        <div id="paginationContainer" style="margin-top:30px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;"></div>
+
         <div id="empty" style="text-align:center; padding:50px; display:none; color:var(--text-muted);">
             <i class="fa-solid fa-box-open" style="font-size:3rem; margin-bottom:15px; opacity:0.3;"></i>
             <p>Tidak ada item ditemukan.</p>
@@ -613,6 +615,12 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
         import { getDatabase, ref, onValue, set, push, update } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-database.js";
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+        const SUPABASE_URL = "https://nraodutnhtncdzopqdua.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yYW9kdXRuaHRuY2R6b3BxZHVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0OTM2NTMsImV4cCI6MjA4MDA2OTY1M30.U75_MTraym-Qahu9uwxaFnKnjxE4YiqiKDpeZq2oP0w";
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let currentPage = 1;
+        const itemsPerPage = 10;
 
         const $ = id => document.getElementById(id);
         
@@ -728,6 +736,43 @@
             renderBorderOptions();
         }
 
+window.goToPage = (pageNumber) => {
+    if (pageNumber > 0) {
+        currentPage = pageNumber;
+        render();
+        window.scrollTo(0, 0);
+    }
+};
+
+const renderPagination = (totalCount) => {
+    const paginationContainer = $('paginationContainer');
+    const totalPages = Math.ceil(totalCount / itemsPerPage);
+
+    if (totalPages <= 1) {
+        paginationContainer.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+    const maxPages = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxPages / 2));
+    let end = Math.min(totalPages, start + maxPages - 1);
+
+    if (end - start < maxPages - 1) {
+        start = Math.max(1, end - maxPages + 1);
+    }
+
+    html += `<button class="btn btn-primary" onclick="goToPage(${currentPage-1})" ${currentPage===1?'disabled':''}>&laquo;</button>`;
+
+    for (let i = start; i <= end; i++) {
+        html += `<button class="btn ${i === currentPage ? 'btn-primary' : ''}" onclick="goToPage(${i})">${i}</button>`;
+    }
+
+    html += `<button class="btn btn-primary" onclick="goToPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>&raquo;</button>`;
+
+    paginationContainer.innerHTML = html;
+};
+
         // --- AUTH & UI LOGIC ---
         function checkAuthUI() {
             const u = auth.currentUser;
@@ -804,69 +849,64 @@
             return sum / list.length;
         }
 
+window.onload = () => {
+    goToPage(1);
+};
+
         // --- GRID RENDERER ---
-        window.render = () => {
-            const t = $('search').value.toLowerCase();
-            const cat = $('categoryFilter').value;
-            const sort = $('sortSelect').value;
-            const g = $('grid'); g.innerHTML = '';
-            
-            let filtered = allItems.filter(i => 
-                i.title.toLowerCase().includes(t) && (!cat || i.cat === cat)
-            );
-            
-            // Sorting
-            filtered.sort((a,b) => {
-                const timeA = a.changelog?.[a.changelog.length-1]?.timestamp || 0;
-                const timeB = b.changelog?.[b.changelog.length-1]?.timestamp || 0;
-                const rateA = calculateAverageRating(a.ratings);
-                const rateB = calculateAverageRating(b.ratings);
+window.render = async () => {
+    const t = $('search').value.toLowerCase();
+    const cat = $('categoryFilter').value;
+    const sort = $('sortSelect').value;
+    const g = $('grid'); 
+    const offset = (currentPage - 1) * itemsPerPage;
 
-                if (sort === 'highest_rating') return rateB - rateA;
-                if (sort === 'oldest') return (a.changelog?.[0]?.timestamp||0) - (b.changelog?.[0]?.timestamp||0);
-                if (sort === 'title_asc') return a.title.localeCompare(b.title);
-                return timeB - timeA; // Default Newest
-            });
+    g.innerHTML = '<h2 style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Loading...</h2>';
 
-            if(filtered.length === 0) $('empty').style.display = 'block';
-            else {
-                $('empty').style.display = 'none';
-                filtered.forEach(i => {
-                    const avgRating = calculateAverageRating(i.ratings);
-                    const isOwner = auth.currentUser && (allUsers[auth.currentUser.uid]?.role === 'owner');
-                    const isAuthor = auth.currentUser && (auth.currentUser.uid === i.authorId);
-                    
-                    const d = document.createElement('div');
-                    d.className = 'card';
-                    d.innerHTML = `
-                        <div class="card-img" onclick="openItemDetailModal('${i.id}')">
-                            <span class="cat-badge">${i.cat}</span>
-                            <img src="${i.img}" loading="lazy">
-                        </div>
-                        <div class="card-body">
-                            <div class="card-title">${i.title}</div>
-                            <div class="card-meta">
-                                <span onclick="openUserProfileModal('${i.authorId}')" style="cursor:pointer; display:flex; align-items:center; gap:5px;">
-                                    <i class="fa-regular fa-user"></i> ${i.author}
-                                </span>
-                                <span>${i.changelog.length ? new Date(i.changelog[i.changelog.length-1].timestamp).toLocaleDateString() : ''}</span>
-                            </div>
-                            <div style="font-size:0.8rem; margin-top:5px; color:#facc15;">
-                                ${avgRating > 0 ? '★ ' + avgRating.toFixed(1) : '<span style="color:var(--text-muted)">Belum ada rating</span>'}
-                            </div>
-                            <div style="margin-top:10px; display:flex; gap:5px;">
-                                <button class="btn btn-primary" style="flex:1; font-size:0.8rem; padding:6px;" onclick="openItemDetailModal('${i.id}')">Lihat</button>
-                                ${(isOwner || isAuthor) ? `
-                                    <button class="btn" style="padding:6px 10px;" onclick="openItemEditModal('${i.id}')"><i class="fa-solid fa-pen"></i></button>
-                                    <button class="btn btn-danger" style="padding:6px 10px;" onclick="removeItem('${i.id}')"><i class="fa-solid fa-trash"></i></button>
-                                ` : ''}
-                            </div>
-                        </div>
-                    `;
-                    g.appendChild(d);
-                });
-            }
-        };
+    let q = supabase.from('items').select('*', { count: 'exact' });
+
+    if (cat && cat !== 'all') q = q.eq('cat', cat);
+    if (t.length) q = q.or(`title.ilike.%${t}%,description.ilike.%${t}%`);
+
+    if (sort === 'highest_rating') q = q.order('avg_rating', { ascending:false });
+    else if (sort === 'oldest') q = q.order('created_at', { ascending:true });
+    else if (sort === 'title_asc') q = q.order('title', { ascending:true });
+    else q = q.order('last_update_timestamp', { ascending:false });
+
+    const { data: filtered, error, count } = await q.limit(itemsPerPage).offset(offset);
+
+    renderPagination(count);
+
+    if (error) {
+        g.innerHTML = `<p style="color:red">Error load data</p>`;
+        return;
+    }
+
+    g.innerHTML = '';
+    if (!filtered.length) {
+        $('empty').style.display = 'block';
+        return;
+    }
+
+    $('empty').style.display = 'none';
+
+    filtered.forEach(i => {
+        const d = document.createElement('div');
+        d.className = "card";
+        d.innerHTML = `
+            <div class="card-img" onclick="openItemDetailModal('${i.id}')">
+                <span class="cat-badge">${i.cat}</span>
+                <img src="${i.img}" loading="lazy">
+            </div>
+            <div class="card-body">
+                <div class="card-title">${i.title}</div>
+                <div class="card-meta">
+                    <span><i class="fa-regular fa-user"></i> ${i.author}</span>
+                </div>
+            </div>`;
+        g.appendChild(d);
+    });
+};
 
         // --- ITEM DETAIL MODAL ---
         window.openItemDetailModal = (id) => {
