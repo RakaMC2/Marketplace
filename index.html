@@ -338,7 +338,7 @@
                 <small style="color:var(--warn); font-weight:bold; letter-spacing:1px; text-transform:uppercase;">Admin</small>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-top:10px;">
                     <button class="btn" style="font-size:0.75rem;" onclick="showOwnerTab('users')">👥 Users</button>
-                    <button class="btn" style="font-size:0.75rem;" onclick="openCategoryModal()">🏷️ Kategori</button>
+                    <button class="btn" style="font-size:0.75rem;" onclick="openCategoryModal()">🏷️ Category</button>
                 </div>
                 <div id="ownerTabContent" style="margin-top:10px;"></div>
             </div>
@@ -357,7 +357,14 @@
             </div>
             
             <select id="categoryFilter" onchange="render()" style="width:auto; margin-bottom:0;">
-                <option value="">Semua Kategori</option>
+                <option value="">All Category</option>
+                <option value="">Add-On</option>
+                <option value="">UI</option>
+                <option value="">Scripts</option>
+                <option value="">Texture Pack</option>
+                <option value="">Map</option>
+                <option value="">Shaders</option>
+                <option value="">Skins</option>
             </select>
             
             <select id="sortSelect" onchange="render()" style="width:auto; margin-bottom:0;">
@@ -455,7 +462,7 @@
                 
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                     <div>
-                        <label style="font-size:0.8rem; color:var(--text-muted);">Kategori</label>
+                        <label style="font-size:0.8rem; color:var(--text-muted);">Category</label>
                         <select id="upCat"></select>
                     </div>
                     <div>
@@ -578,9 +585,9 @@
     <div id="categoryModal" class="modal-overlay">
         <div class="modal" style="max-width: 400px;">
             <button class="close-modal" onclick="closeCategoryModal()">✕</button>
-            <h2>⚙️ Kelola Kategori</h2>
+            <h2>⚙️ Category Settings</h2>
             <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <input type="text" id="newCatInput" placeholder="Kategori Baru" style="margin:0;">
+                <input type="text" id="newCatInput" placeholder="New Category" style="margin:0;">
                 <button onclick="addCategory()" class="btn btn-primary">Tambah</button>
             </div>
             <div id="categoryList" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px;"></div>
@@ -592,7 +599,7 @@
 
     <div id="editCategoryModal" class="modal-overlay">
         <div class="modal" style="max-width: 350px;">
-            <h3> Edit Kategori</h3>
+            <h3> Category Edit</h3>
             <p style="color:var(--text-muted);">Mengubah: <strong id="oldCatName" style="color:var(--text-main);"></strong></p>
             <input type="text" id="editedCatInput" placeholder="Nama Baru">
             <div style="display:flex; gap:10px; margin-top:15px;">
@@ -625,7 +632,7 @@
         // --- GLOBAL STATE ---
         let allUsers = {};
         let allItems = [];
-        const DEFAULT_CATEGORIES = ['Add-On', 'Skins', 'Shaders', 'Map', 'Texture Pack', 'Tambahan'];
+        const DEFAULT_CATEGORIES = ['Add-On', 'Skins', 'Shaders', 'Map', 'Texture Pack', 'Scripts', 'UI'];
         let allCategories = [...DEFAULT_CATEGORIES]; 
         
         // Image State
@@ -1171,7 +1178,7 @@
         }
         function renderCategoryFilter() {
             const select = $('categoryFilter'); if(!select) return;
-            select.innerHTML = '<option value="">Semua Kategori</option>'; 
+            select.innerHTML = '<option value="">All Category</option>'; 
             allCategories.forEach(cat => {
                 const opt = document.createElement('option');
                 opt.value = cat; opt.textContent = cat; select.appendChild(opt);
@@ -1197,7 +1204,7 @@
             renderCategoryList();
         };
         window.resetCategories = async () => {
-             if(confirm('Reset kategori?')) await set(ref(db, 'categories'), DEFAULT_CATEGORIES);
+             if(confirm('Reset Category?')) await set(ref(db, 'categories'), DEFAULT_CATEGORIES);
         };
         window.openEditCategoryModal = (old) => {
             categoryToEdit = old; $('oldCatName').textContent = old; $('editedCatInput').value = old;
