@@ -15,6 +15,8 @@ This Project You Can Add Item Or Add-Ons In This Website
 **Website [🌐]**
 - https://visual-teams.vercel.app/
 - https://visual-teams.netlify.app/
+- https://rakamc2.github.io/Marketplace/
+- https://visual-teams.edgeone.dev/
 
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/3a619443-df24-440b-ad49-a6f0ed2b1cd3/deploy-status)](https://app.netlify.com/projects/visual-teams/deploys)
