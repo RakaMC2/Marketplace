@@ -1,44 +1,67 @@
-<div align="center"><img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&size=28&pause=1000&color=22D3EE&center=true&vCenter=true&width=700&lines=VISUAL+CRAFT;Fast+Addon+%26+Texture+Pack+Uploader;Simple.+Free.+Fast." /><img src="https://capsule-render.vercel.app/api?type=rect&color=0:0ea5e9,100:22d3ee&height=120&section=header&text=VISUAL%20CRAFT&fontSize=42&fontColor=ffffff" /></div>
+<div align="center"><img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f172a,100:020617&height=200&section=header&text=VISUAL%20CRAFT&fontSize=46&fontColor=22d3ee" /><img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&size=20&pause=800&color=22D3EE&center=true&vCenter=true&width=700&lines=FAST+ADDON+%26+TEXTURE+PACK+UPLOADER;NO+LOGIN+%7C+NO+RIBET;FREE+%7C+SIMPLE+%7C+BRUTAL" /></div>
+---
+
+<div align="center"><img src="https://img.shields.io/badge/STYLE-CYBERPUNK-ec4899?style=for-the-badge" />
+<img src="https://img.shields.io/badge/MODE-HACKER-22d3ee?style=for-the-badge" />
+<img src="https://img.shields.io/badge/COST-FREE-22c55e?style=for-the-badge" />
+<img src="https://img.shields.io/badge/STATUS-ONLINE-22d3ee?style=for-the-badge" /></div>
+---
+
+⚡ VISUAL CRAFT
+
+Tool upload Addon dan Texture Pack.
+
+Tidak ada UI lebay. Tidak ada langkah aneh. Upload → selesai → pakai.
+
 
 ---
 
-<div align="center"><img src="https://img.shields.io/badge/Upload-Fast-22c55e?style=for-the-badge" />
-<img src="https://img.shields.io/badge/Cost-Free-0ea5e9?style=for-the-badge" />
-<img src="https://img.shields.io/badge/Flow-Simple-f59e0b?style=for-the-badge" /></div>
+🧠 CORE PRINCIPLE
+
+Speed > aesthetic
+
+Function > hype
+
+Done > perfect
+
+
 
 ---
 
-⚡ Apa itu Visual Craft?
-
-Visual Craft adalah tool untuk upload Addon dan Texture Pack secara cepat dan gratis.
-
-Tanpa login. Tanpa ribet. Fokus beres.
-
-
----
-
-🚀 Fitur
+🚀 FEATURES
 
 ⚡ Upload cepat
 
+🧩 Addon & Texture Pack
+
 🆓 Gratis
 
-🎨 Addon & Texture Pack
+🧠 Alur minimal
 
-🧠 Alur simpel
+🖥️ Cocok untuk workflow cepat
 
-
-
----
-
-🧭 Alur Kerja
-
-flowchart LR<br>
-  User --> Upload<br>
-  Upload --> VisualCraft<br>
-  VisualCraft --> Done
 
 
 ---
 
-<div align="center"><img src="https://capsule-render.vercel.app/api?type=rect&color=0:020617,100:0f172a&height=100&section=footer&text=Upload.+Done.+Use.&fontSize=20&fontColor=94a3b8" /></div>
+🧭 DATA FLOW
+
+flowchart LR
+  USER -->|UPLOAD| VISUAL_CRAFT
+  VISUAL_CRAFT -->|PROCESS| OUTPUT
+
+
+---
+
+📦 STRUCTURE
+
+visual-craft/
+├─ addons/
+├─ textures/
+├─ upload.sh
+└─ README.md
+
+
+---
+
+<div align="center"><img src="https://capsule-render.vercel.app/api?type=rect&color=0:020617,100:0f172a&height=120&section=footer&text=NO+FLUFF.+JUST+UPLOAD.&fontSize=20&fontColor=94a3b8" /></div>
