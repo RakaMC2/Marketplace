@@ -33,9 +33,9 @@ Tanpa login. Tanpa ribet. Fokus beres.
 
 🧭 Alur Kerja
 ``
-flowchart LR\n
-  User --> Upload\n
-  Upload --> VisualCraft\n
+flowchart LR
+  User --> Upload
+  Upload --> VisualCraft
   VisualCraft --> Done
 ``
 
