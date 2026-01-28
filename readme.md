@@ -32,12 +32,12 @@ Tanpa login. Tanpa ribet. Fokus beres.
 ---
 
 🧭 Alur Kerja
-``
-flowchart LR
-  User --> Upload
-  Upload --> VisualCraft
+
+flowchart LR<br>
+  User --> Upload<br>
+  Upload --> VisualCraft<br>
   VisualCraft --> Done
-``
+
 
 ---
 
