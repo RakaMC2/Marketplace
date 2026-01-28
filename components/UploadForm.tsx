@@ -106,11 +106,11 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
       reader.readAsDataURL(files[0]);
     } else {
       const newGallery: string[] = [];
-      Array.from(files).slice(0, 5).forEach((file) => {
+      Array.from(files).slice(0, 30).forEach((file) => {
         const reader = new FileReader();
         reader.onload = (ev) => {
           if (ev.target?.result) newGallery.push(ev.target.result as string);
-          if (newGallery.length === Math.min(files.length, 5)) {
+          if (newGallery.length === Math.min(files.length, 30)) {
              setForm(prev => ({ ...prev, gallery: newGallery }));
           }
         };
@@ -172,7 +172,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
             </div>
 
             <div>
-               <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Gallery (Max 5)</label>
+               <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Gallery (Max 30)</label>
                <div className="relative">
                     <label className="flex items-center justify-center w-full h-[46px] bg-[#1a1a1e] border border-white/5 rounded-xl cursor-pointer hover:bg-white/5 transition-colors text-sm text-gray-400">
                       <ImageIcon size={16} className="mr-2"/>
