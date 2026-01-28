@@ -3,13 +3,13 @@
 declare var firebase: any;
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBcYhpGSSEImXWov92ievzBgHrvODa0b1M",
-  authDomain: "visualmcraft.firebaseapp.com",
-  databaseURL: "https://visualmcraft-default-rtdb.asia-southeast1.firebasedatabase.app/",
-  projectId: "visualmcraft",
-  storageBucket: "visualmcraft.firebasestorage.app",
-  messagingSenderId: "699644931018",
-  appId: "1:699644931018:web:1560a9e10885ee8ee97d33"
+  apiKey: "AIzaSyAr37SrpRBWv4LPiExlJG0aJT0r5EJ9wCg",
+  authDomain: "voltra-essentials.firebaseapp.com",
+  projectId: "voltra-essentials",
+  storageBucket: "voltra-essentials.firebasestorage.app",
+  messagingSenderId: "956503858766",
+  appId: "1:956503858766:web:46bf6f30ff0c709fe6ed1f",
+  measurementId: "G-K6FEG8DPV2"
 };
 
 // Use checking to prevent double initialization in some environments
