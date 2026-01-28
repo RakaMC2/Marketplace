@@ -91,7 +91,7 @@ export default function App() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<Record<string, User>>({}); 
-  const [categories, setCategories] = useState<string[]>(['Add-On', 'Map', 'Texture Pack', 'Skins', 'Shaders']);
+  const [categories, setCategories] = useState<string[]>(['[Bedrock] Add-On', '[Bedrock] Map', '[Bedrock] Texture-Pack', '[Bedrock] Skins', '[Bedrock] Shaders', '[Java] Mods', '[Java] Texture-Pack', '[Java] MCModels', '[Java] Map', '[Java] Plugins', '[Java] Shaders']);
   
   // UI State
   const [sidebarOpen, setSidebarOpen] = useState(false);
