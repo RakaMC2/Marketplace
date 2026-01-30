@@ -226,13 +226,13 @@
 @keyframes lightning-strike {
   0% {
     opacity: 0;
-    transform: translateX(-120%);
+    transform: translateY(-120%);
   }
-  10% {
+  5% {
     opacity: 1;
   }
-  20% {
-    transform: translateX(120%);
+  10% {
+    transform: translateY(120%);
     opacity: 0;
   }
   100% {
@@ -240,31 +240,29 @@
   }
 }
 
-.lightning-discord,
-.lightning-discord-red {
+.lightning-discord {
   position: relative;
   overflow: hidden;
 }
 
-.lightning-discord::after,
-.lightning-discord-red::after {
+/* PETIR */
+.lightning-discord::after {
   content: '';
   position: absolute;
-  inset: -40%;
+  top: -50%;
+  left: 50%;
+  width: 40px;
+  height: 200%;
+  transform: translateX(-50%);
   background-repeat: no-repeat;
-  background-size: 300% 300%;
-  animation: lightning-strike 3.5s infinite;
+  background-position: center;
+  background-size: contain;
   pointer-events: none;
-}
 
-.lightning-discord::after {
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='90,0 110,60 70,60 130,140 100,140 120,200' fill='none' stroke='%23fde047' stroke-width='8' stroke-linejoin='round'/%3E%3C/svg%3E");
-  filter: drop-shadow(0 0 15px #fde047);
-}
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 200'%3E%3Cpolyline points='20,0 30,40 10,40 30,100 15,100 25,160' fill='none' stroke='%23fde047' stroke-width='4' stroke-linejoin='round'/%3E%3C/svg%3E");
 
-.lightning-discord-red::after {
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='90,0 110,60 70,60 130,140 100,140 120,200' fill='none' stroke='%23ff1a1a' stroke-width='8' stroke-linejoin='round'/%3E%3C/svg%3E");
-  filter: drop-shadow(0 0 18px #ff1a1a);
+  filter: drop-shadow(0 0 12px #fde047);
+  animation: lightning-strike 3s infinite;
 }
 
       .animate-gradient-border {
