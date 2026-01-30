@@ -209,12 +209,7 @@ export const BORDERS: Record<
   },
   
   lightning_discord: {
-    name: 'Lightning Discord',
+    name: 'Lightning Discord ⚡',
     class: 'border-2 border-yellow-400 lightning-discord',
-  },
-
-  lightning_discord_red: {
-    name: 'Lightning Discord Red',
-    class: 'border-2 border-red-500 lightning-discord-red',
   },
 };
