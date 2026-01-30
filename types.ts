@@ -208,13 +208,13 @@ export const BORDERS: Record<
       'border-2 border-gray-300 shadow-[0_0_10px_white] animate-noise',
   },
   
-  lightning_yellow: {
-    name: 'Lightning Yellow ⚡',
-    class: 'border-2 border-yellow-400 lightning-yellow',
+  lightning_discord: {
+    name: 'Lightning Discord',
+    class: 'border-2 border-yellow-400 lightning-discord',
   },
 
-  lightning_red: {
-    name: 'Lightning Red ⚡🔥',
-    class: 'border-2 border-red-500 lightning-red',
+  lightning_discord_red: {
+    name: 'Lightning Discord Red',
+    class: 'border-2 border-red-500 lightning-discord-red',
   },
 };
