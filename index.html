@@ -223,73 +223,47 @@
 }
 .animate-noise { animation: noise .15s infinite; }
 
-@keyframes lightning-flash {
-  0%, 85%, 100% {
+@keyframes lightning-strike {
+  0% {
+    opacity: 0;
+    transform: translateX(-120%);
+  }
+  10% {
+    opacity: 1;
+  }
+  20% {
+    transform: translateX(120%);
     opacity: 0;
   }
-  86% {
-    opacity: 1;
-  }
-  88% {
-    opacity: 0.3;
-  }
-  90% {
-    opacity: 1;
-  }
-}
-
-@keyframes lightning-move {
-  0% {
-    transform: translateX(-120%) skewX(-20deg);
-  }
   100% {
-    transform: translateX(120%) skewX(-20deg);
+    opacity: 0;
   }
 }
 
-.lightning-yellow,
-.lightning-red {
+.lightning-discord,
+.lightning-discord-red {
   position: relative;
   overflow: hidden;
 }
 
-.lightning-yellow::before,
-.lightning-red::before {
+.lightning-discord::after,
+.lightning-discord-red::after {
   content: '';
   position: absolute;
-  top: -50%;
-  left: 0;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(
-    120deg,
-    transparent 40%,
-    rgba(255,255,255,0.9) 50%,
-    transparent 60%
-  );
-  animation:
-    lightning-move 1.8s linear infinite,
-    lightning-flash 4s infinite;
+  inset: -40%;
+  background-repeat: no-repeat;
+  background-size: 300% 300%;
+  animation: lightning-strike 3.5s infinite;
   pointer-events: none;
 }
 
-.lightning-yellow {
-  box-shadow:
-    0 0 12px #facc15,
-    0 0 30px #fde047;
-}
-
-.lightning-red {
-  box-shadow:
-    0 0 12px #ef4444,
-    0 0 35px #ff1a1a;
-}
-
-.lightning-yellow::before {
+.lightning-discord::after {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='90,0 110,60 70,60 130,140 100,140 120,200' fill='none' stroke='%23fde047' stroke-width='8' stroke-linejoin='round'/%3E%3C/svg%3E");
   filter: drop-shadow(0 0 15px #fde047);
 }
 
-.lightning-red::before {
+.lightning-discord-red::after {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='90,0 110,60 70,60 130,140 100,140 120,200' fill='none' stroke='%23ff1a1a' stroke-width='8' stroke-linejoin='round'/%3E%3C/svg%3E");
   filter: drop-shadow(0 0 18px #ff1a1a);
 }
 
