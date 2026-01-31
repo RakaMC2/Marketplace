@@ -102,11 +102,21 @@
       
       input, select, textarea { color-scheme: dark; }
 
-@keyframes glow {
-  0%, 100% { box-shadow: 0 0 10px currentColor; }
-  50% { box-shadow: 0 0 25px currentColor; }
-}
-.animate-glow { animation: glow 2s ease-in-out infinite; }
+      @keyframes glow {
+        0%, 100% {
+          box-shadow: 0 0 10px 
+          currentColor;
+        }
+        50% {
+          box-shadow: 0 0 25px 
+          currentColor;
+        }
+      }
+
+      .animate-glow {
+        animation: glow 2s
+        ease-in-out infinite;
+      }
 
 @keyframes flicker {
   0%, 100% { opacity: 1 }
@@ -156,7 +166,6 @@
 }
 .animate-flow { animation: flow 2.5s infinite; }
 
-/* ========= SLOW SPIN ========= */
 @keyframes spin-slow {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -207,63 +216,96 @@
 }
 .animate-shiver { animation: shiver .4s infinite; }
 
-@keyframes wave {
-  0% { box-shadow: 0 0 10px indigo; }
-  100% { box-shadow: 0 0 30px indigo; }
-}
-.animate-wave { animation: wave 1.8s infinite alternate; }
+      @keyframes wave {
+        0% { box-shadow: 0 0 10px indigo; }
+        100% { box-shadow: 0 0 30px indigo; }
+      }
 
-.animate-spin-border {
-  animation: spin-slow 4s linear infinite;
-}
+      .animate-wave { 
+        animation: wave 1.8s infinite alternate;
+      }
 
-@keyframes noise {
-  0%,100% { opacity: 1 }
-  50% { opacity: .7 }
-}
-.animate-noise { animation: noise .15s infinite; }
+      .animate-spin-border {
+        animation: spin-slow 4s linear infinite;
+      }
 
-@keyframes lightning-strike {
-  0% {
-    opacity: 0;
-    transform: translateY(-120%);
-  }
-  5% {
-    opacity: 1;
-  }
-  10% {
-    transform: translateY(120%);
-    opacity: 0;
-  }
-  100% {
-    opacity: 0;
-  }
-}
+      @keyframes noise {
+        0%,100% { opacity: 1 }
+        50% { opacity: .7 }
+      }
 
-.lightning-discord {
-  position: relative;
-  overflow: hidden;
-}
+      .animate-noise { 
+        animation: noise .15s infinite;
+      }
 
-/* PETIR */
-.lightning-discord::after {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: 50%;
-  width: 40px;
-  height: 200%;
-  transform: translateX(-50%);
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
-  pointer-events: none;
+      .lightning-border {
+        position: relative;
+        border-radius: 12px;
+        padding: 2px;
+      }
+      
+      .lightning-border::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        border: 2px solid #fde047;
+        pointer-events: none;
+      }
 
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 200'%3E%3Cpolyline points='20,0 30,40 10,40 30,100 15,100 25,160' fill='none' stroke='%23fde047' stroke-width='4' stroke-linejoin='round'/%3E%3C/svg%3E");
+      .lightning-border::after {
+        content: "";
+        position: absolute;
+        inset: -6px;
+        border-radius: inherit;
+        pointer-events: none;
 
-  filter: drop-shadow(0 0 12px #fde047);
-  animation: lightning-strike 3s infinite;
-}
+        background:
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 40'%3E%3Cpolyline points='0,20 30,5 60,30 90,10 120,35 150,15 180,25' fill='none' stroke='%23fde047' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+          repeat-x;
+
+        background-size: 200px 40px;
+
+        mask: conic-gradient(
+          from 0deg,
+          transparent 0deg,
+          black 20deg,
+          transparent 60deg
+        );
+
+        animation:
+          rotate-strike 6s linear infinite,
+          strike-opacity 6s infinite;
+      }
+
+      @keyframes rotate-strike {
+        from {
+          transform: rotate(0deg);
+        }
+        to { 
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes strike-opacity {
+        0%, 70%, 100% { opacity: 0; }
+        75% { opacity: 1; }
+        85% { opacity: 0.8; }
+      }
+
+      .lightning-border {
+        box-shadow: none;
+        animation: border-react 6s infinite;
+      }
+
+      @keyframes border-react {
+        0%, 70%, 100% { box-shadow: none; }
+        75% {
+          box-shadow:
+            0 0 12px #fde047,
+            0 0 30px #fde047;
+        }
+      }
 
       .animate-gradient-border {
         position: relative;
