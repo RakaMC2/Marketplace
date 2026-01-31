@@ -118,11 +118,14 @@
         ease-in-out infinite;
       }
 
-@keyframes flicker {
-  0%, 100% { opacity: 1 }
-  50% { opacity: .6 }
-}
-.animate-flicker { animation: flicker 1.5s infinite; }
+      @keyframes flicker {
+        0%, 100% { opacity: 1 }
+        50% { opacity: .6 }
+      }
+
+      .animate-flicker {
+        animation: flicker 1.5s infinite;
+      }
 
 @keyframes fade {
   0%,100% { opacity: .4 }
@@ -206,15 +209,18 @@
   50% { box-shadow: 0 0 35px red; }
   100% { box-shadow: 0 0 15px orange; }
 }
-.animate-flame { animation: flame 1.2s infinite; }
+      .animate-flame { animation: flame 1.2s infinite; }
 
-@keyframes shiver {
-  0% { transform: translateX(0) }
-  25% { transform: translateX(-1px) }
-  75% { transform: translateX(1px) }
-  100% { transform: translateX(0) }
-}
-.animate-shiver { animation: shiver .4s infinite; }
+      @keyframes shiver {
+        0% { transform: translateX(0) }
+        25% { transform: translateX(-1px) }
+        75% { transform: translateX(1px) }
+        100% { transform: translateX(0) }
+      }
+
+      .animate-shiver { 
+        animation: shiver .4s infinite;
+      }
 
       @keyframes wave {
         0% { box-shadow: 0 0 10px indigo; }
@@ -249,7 +255,7 @@
         position: absolute;
         inset: 0;
         border-radius: inherit;
-        border: 2px solid #fde047;
+        border: 2px solid #fd4747;
         pointer-events: none;
       }
 
@@ -302,8 +308,99 @@
         0%, 70%, 100% { box-shadow: none; }
         75% {
           box-shadow:
-            0 0 12px #fde047,
-            0 0 30px #fde047;
+            0 0 12px #fd4747,
+            0 0 30px #fd4747;
+        }
+      }
+
+      .spike-border {
+        position: relative;
+        border: 2px solid #fde047;
+        border-radius: 14px;
+        padding: 24px;
+        width: 300px;
+        margin: 60px auto;
+        background: #0b0b12;
+        color: white;
+        overflow: hidden;
+
+        animation:
+          border-react 6.2s infinite,
+          micro-shake 6.2s infinite;
+      }
+
+      .spike {
+        position: absolute;
+        inset: -40%;
+        pointer-events: none;
+        opacity: 0;
+
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: 320px 320px;
+      }
+
+      .spike.plus {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300'%3E%3Cline x1='150' y1='0' x2='150' y2='300' stroke='%23fde047' stroke-width='6'/%3E%3Cline x1='0' y1='150' x2='300' y2='150' stroke='%23fde047' stroke-width='6'/%3E%3C/svg%3E");
+
+        filter:
+          drop-shadow(0 0 10px #fde047)
+          drop-shadow(0 0 26px #fde047);
+
+        animation: spike-strike 6.2s infinite;
+      }
+
+      .spike.cross {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300'%3E%3Cline x1='0' y1='0' x2='300' y2='300' stroke='%23ff1a1a' stroke-width='6'/%3E%3Cline x1='300' y1='0' x2='0' y2='300' stroke='%23ff1a1a' stroke-width='6'/%3E%3C/svg%3E");
+
+        filter:
+          drop-shadow(0 0 10px #ff1a1a)
+          drop-shadow(0 0 28px #ff1a1a);
+
+        animation: spike-strike 6.2s infinite 0.14s;
+      }
+
+      @keyframes spike-strike {
+        0%, 72%, 100% {
+          opacity: 0;
+          transform: scale(0.85);
+        }
+
+        76% {
+          opacity: 1;
+          transform: scale(1);
+        }
+
+        82% {
+          opacity: 0.6;
+          transform: scale(1.06);
+        }
+      }
+
+      @keyframes border-react {
+        0%, 72%, 100% {
+          box-shadow: none;
+        }
+
+        76% {
+          box-shadow:
+            0 0 14px #fde047,
+            0 0 36px #ff1a1a;
+        }
+      }
+
+      @keyframes micro-shake {
+        0%, 72%, 100% {
+          transform: translate(0);
+        }
+        76% {
+          transform: translate(-1px, 1px);
+        }
+        78% {
+          transform: translate(1px, -1px);
+        }
+        80% {
+          transform: translate(0);
         }
       }
 
