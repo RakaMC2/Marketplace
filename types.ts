@@ -211,5 +211,10 @@ export const BORDERS: Record<
   lightning_discord: {
     name: 'Lightning Border',
     class: 'border-2 border-yellow-400 lightning-border',
+  }, 
+
+  lightning_border: {
+    name: 'Lightning',
+    class: 'border-2 border-yellow-400 spike-border spike plus spike cross',
   }
 };
