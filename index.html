@@ -80,32 +80,90 @@
 
       .toast {
         visibility: hidden;
-        min-width: 250px;
-        background-color: #333;
+        min-width: 300px;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #4a148c 100%);
         color: #fff;
-        text-align: center;
-        border-radius: 4px;
-        padding: 16px;
+        text-align: left;
+        border-radius: 12px;
+        padding: 18px 24px;
         position: fixed;
         z-index: 1000;
         right: 30px;
         top: 30px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        box-shadow: 0 8px 24px rgba(74, 20, 140, 0.4),
+          0 4px 8px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(138, 43, 226, 0.3);
+        backdrop-filter: blur(10px);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-size: 15px;
+      }
+      
+      .toast::before {
+        content: "i";
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        background: linear-gradient(135deg, #7b2cbf, #9d4edd);
+        border-radius: 50%;
+        font-weight: bold;
+        font-size: 16px;
+        font-style: italic;
+        font-family: serif;
+        flex-shrink: 0;
       }
       
       .toast.show {
         visibility: visible;
-        animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        animation: slideIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55),
+          slideOut 0.5s 2.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
       }
       
-      @keyframes fadein {
-        from {opacity: 0; transform: translateY(-20px);}
-        to {opacity: 1; transform: translateY(0);}
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateX(100%) scale(0.8);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0) scale(1);
+        }
       }
       
-      @keyframes fadeout {
-        from { opacity: 1; }
-        to { opacity: 0; }
+      @keyframes slideOut {
+        from {
+          opacity: 1;
+          transform: translateX(0) scale(1);
+        }
+        to {
+          opacity: 0;
+          transform: translateX(100%) scale(0.8);
+        }
+      }
+      
+      .toast::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 3px;
+        width: 100%;
+        background: linear-gradient(90deg, #7b2cbf, #9d4edd, #c77dff);
+        border-radius: 0 0 12px 12px;
+        animation: progress 3s linear;
+      }
+      
+      @keyframes progress {
+        from {
+          width: 100%;
+        }
+        to {
+          width: 0%;
+        }
       }
 
       .bg-grid {
