@@ -22,11 +22,11 @@ import {
 
 // --- CONSTANTS ---
 const ASSETS = {
-  TITLE: 'https://raw.githubusercontent.com/RakaMC2/Marketplace/main/title.png',
-  NO_PFP: 'https://raw.githubusercontent.com/RakaMC2/Marketplace/main/nopfp.png',
-  ICON_DC: 'https://raw.githubusercontent.com/RakaMC2/Marketplace/main/dc.png',
-  ICON_YT: 'https://raw.githubusercontent.com/RakaMC2/Marketplace/main/yt.png',
-  ICON_WA: 'https://raw.githubusercontent.com/RakaMC2/Marketplace/main/wa.png',
+  TITLE: 'https://raw.githubusercontent.com/RakaMC2/Marketplace/main/images/title.png',
+  NO_PFP: 'https://raw.githubusercontent.com/RakaMC2/Marketplace/main/images/nopfp.png',
+  ICON_DC: 'https://raw.githubusercontent.com/RakaMC2/Marketplace/main/images/dc.png',
+  ICON_YT: 'https://raw.githubusercontent.com/RakaMC2/Marketplace/main/images/yt.png',
+  ICON_WA: 'https://raw.githubusercontent.com/RakaMC2/Marketplace/main/images/wa.png',
 };
 
 // --- HELPERS ---
