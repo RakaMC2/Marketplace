@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, LayoutGrid, Image as ImageIcon, AlertCircle, Upload, Trash2, Loader2 } from 'lucide-react';
 import { Item } from '../types';
 import { CustomDropdown } from './CustomDropdown';
-import { showToast } from '../app';
+import { showToast } from '../App';
 
 interface UploadFormProps {
   initialData: Partial<Item>;
