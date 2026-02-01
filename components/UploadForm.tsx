@@ -13,6 +13,25 @@ interface UploadFormProps {
 
 const IMGBB_API_KEY = '062b241650d75b270a8032e4fcd6e52b';
 
+// Hook untuk optimize image dengan wsrv.nl
+const useOptimizedImageSrc = (src: string | undefined) => {
+  if (!src) return '';
+  
+  // If it's already a base64 string, we can't optimize it via CDN proxy
+  if (src.startsWith('data:')) return src;
+  
+  // If it's a blob url (local preview), return as is
+  if (src.startsWith('blob:')) return src;
+
+  // Use wsrv.nl proxy untuk optimize
+  try {
+    const encodedUrl = encodeURIComponent(src);
+    return `https://wsrv.nl/?url=${encodedUrl}&w=800&q=80&output=webp&il`;
+  } catch (e) {
+    return src;
+  }
+};
+
 export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories, onClose, onSubmit }) => {
   const [form, setForm] = useState<Partial<Item>>(initialData);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -25,17 +44,37 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
     const formData = new FormData();
     formData.append('image', file);
     
-    const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
-      method: 'POST',
-      body: formData,
-    });
-    
-    if (!response.ok) throw new Error('Upload failed');
-    const resData = await response.json();
-    
-    // Gunakan display_url atau url, pastikan https
-    const imageUrl = resData.data.display_url || resData.data.url;
-    return imageUrl.replace(/^http:/, "https:");
+    try {
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('ImgBB Error:', errorData);
+        throw new Error(errorData?.error?.message || 'Upload failed');
+      }
+      
+      const resData = await response.json();
+      console.log('ImgBB Response:', resData);
+      
+      // Prioritas: image.url (direct link) > url > display_url
+      const imageUrl = resData.data.image?.url || resData.data.url || resData.data.display_url;
+      
+      if (!imageUrl) {
+        throw new Error('No image URL in response');
+      }
+      
+      // Pastikan HTTPS
+      const secureUrl = imageUrl.replace(/^http:/, "https:");
+      console.log('Final Image URL:', secureUrl);
+      
+      return secureUrl;
+    } catch (error) {
+      console.error('Upload to ImgBB failed:', error);
+      throw error;
+    }
   };
 
   const validate = () => {
@@ -70,28 +109,46 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
 
     if (field === 'img') {
       const file = files[0];
+      
+      // Validasi ukuran file (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('Image too large. Max 5MB.');
+        return;
+      }
+      
       const localPreview = URL.createObjectURL(file);
       setForm(prev => ({ ...prev, img: localPreview }));
       
       setUploadingImg(true);
       try {
         const remoteUrl = await uploadToImgBB(file);
-        // Revoke blob URL setelah upload selesai
         URL.revokeObjectURL(localPreview);
         setForm(prev => ({ ...prev, img: remoteUrl }));
-        showToast('Cover uploaded successfully!');
-      } catch (error) {
-        console.error('Upload error:', error);
-        showToast('Failed to upload cover.');
+        showToast('Cover uploaded!');
+      } catch (error: any) {
+        console.error('Cover upload error:', error);
+        showToast(error?.message || 'Failed to upload cover.');
         setForm(prev => ({ ...prev, img: initialData.img || '' }));
         URL.revokeObjectURL(localPreview);
       } finally {
         setUploadingImg(false);
       }
     } else {
-      setUploadingGallery(true);
       const fileArray = Array.from(files).slice(0, 30);
-      const localPreviews = fileArray.map(f => URL.createObjectURL(f));
+      
+      // Validasi ukuran tiap file
+      const validFiles = fileArray.filter(f => {
+        if (f.size > 5 * 1024 * 1024) {
+          showToast(`${f.name} too large. Skipped.`);
+          return false;
+        }
+        return true;
+      });
+      
+      if (validFiles.length === 0) return;
+      
+      setUploadingGallery(true);
+      const localPreviews = validFiles.map(f => URL.createObjectURL(f));
       
       setForm(prev => ({ 
         ...prev, 
@@ -99,14 +156,21 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
       }));
 
       try {
-        const uploadPromises = fileArray.map(f => uploadToImgBB(f));
-        const remoteUrls = await Promise.all(uploadPromises);
+        const uploadPromises = validFiles.map(f => uploadToImgBB(f));
+        const results = await Promise.allSettled(uploadPromises);
         
-        // Hapus blob URLs dan ganti dengan remote URLs
+        const remoteUrls: string[] = [];
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') {
+            remoteUrls.push(result.value);
+          } else {
+            console.error(`Failed to upload image ${index}:`, result.reason);
+          }
+        });
+        
         const currentGallery = form.gallery || [];
         const nonBlobUrls = currentGallery.filter(url => !url.startsWith('blob:'));
         
-        // Revoke semua blob URLs
         localPreviews.forEach(url => URL.revokeObjectURL(url));
         
         setForm(prev => ({
@@ -114,11 +178,14 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
           gallery: [...nonBlobUrls, ...remoteUrls]
         }));
         
-        showToast(`${remoteUrls.length} images uploaded successfully!`);
+        if (remoteUrls.length > 0) {
+          showToast(`${remoteUrls.length}/${validFiles.length} images uploaded!`);
+        } else {
+          showToast('All uploads failed. Please try again.');
+        }
       } catch (error) {
         console.error('Gallery upload error:', error);
-        showToast('Some gallery images failed to upload.');
-        // Hapus blob URLs yang gagal
+        showToast('Upload failed. Please try again.');
         setForm(prev => ({
           ...prev,
           gallery: (prev.gallery || []).filter(url => !url.startsWith('blob:'))
@@ -147,7 +214,6 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
     e.preventDefault();
     if (!validate()) return;
     
-    // Pastikan tidak ada blob URLs sebelum submit
     if (uploadingImg || uploadingGallery) {
       showToast('Please wait for uploads to complete');
       return;
@@ -174,7 +240,6 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
     }
   };
 
-  // Cleanup blob URLs saat component unmount
   useEffect(() => {
     return () => {
       if (form.img?.startsWith('blob:')) {
@@ -188,6 +253,12 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
     };
   }, []);
 
+  // Optimize image URLs
+  const optimizedCoverSrc = useOptimizedImageSrc(form.img);
+  const optimizedGallery = (form.gallery || []).map(src => 
+    src.startsWith('blob:') ? src : useOptimizedImageSrc(src)
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
       <div className="glass-panel w-full max-w-2xl rounded-2xl shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto border border-white/10 bg-[#121214]">
@@ -198,7 +269,6 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
         <h2 className="text-2xl font-bold mb-6 text-white">{form.id ? 'Edit Creation' : 'Upload Creation'}</h2>
         
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Info Utama */}
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Basic Info</label>
             <input 
@@ -214,7 +284,6 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Kategori */}
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Category</label>
               <CustomDropdown 
@@ -225,7 +294,6 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
               />
             </div>
 
-            {/* Cover Image */}
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Cover Image</label>
               <label className="flex items-center justify-center w-full h-[46px] bg-[#1a1a1e] border border-white/5 rounded-xl cursor-pointer hover:bg-white/5 text-sm text-gray-400">
@@ -234,24 +302,32 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
                 <input type="file" accept="image/*" onChange={e => handleFile(e, 'img')} className="hidden" disabled={uploadingImg} />
               </label>
               {form.img && (
-                <div className="mt-2 relative w-full h-24 group">
-                  <img 
-                    src={form.img} 
-                    className={`w-full h-full object-cover rounded-lg border border-white/10 ${uploadingImg ? 'opacity-40' : ''}`} 
-                    alt="Preview"
-                    crossOrigin="anonymous"
-                    onError={(e) => {
-                      console.error('Image failed to load:', form.img);
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                  {uploadingImg && <Loader2 className="absolute inset-0 m-auto animate-spin text-primary" />}
+                <div className="mt-2 relative w-full h-24 bg-[#0a0a0c] rounded-lg overflow-hidden border border-white/10">
+                  {uploadingImg ? (
+                    <div className="flex items-center justify-center h-full">
+                      <Loader2 className="animate-spin text-primary" size={24} />
+                    </div>
+                  ) : (
+                    <img 
+                      src={form.img.startsWith('blob:') ? form.img : optimizedCoverSrc} 
+                      className="w-full h-full object-cover" 
+                      alt="Cover Preview"
+                      loading="lazy"
+                      onLoad={() => console.log('Cover loaded:', form.img)}
+                      onError={(e) => {
+                        console.error('Cover failed to load:', form.img);
+                        // Fallback ke URL asli jika wsrv gagal
+                        if (e.currentTarget.src.includes('wsrv.nl')) {
+                          e.currentTarget.src = form.img || '';
+                        }
+                      }}
+                    />
+                  )}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Galeri */}
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Gallery (Max 30)</label>
             <label className="flex items-center justify-center w-full h-[46px] bg-[#1a1a1e] border border-white/5 rounded-xl cursor-pointer hover:bg-white/5 text-sm text-gray-400">
@@ -260,34 +336,45 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
               <input type="file" multiple accept="image/*" onChange={e => handleFile(e, 'gallery')} className="hidden" disabled={uploadingGallery} />
             </label>
             
-            <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
-              {(form.gallery || []).map((src, i) => (
-                <div key={i} className="relative flex-shrink-0 group">
-                  <img 
-                    src={src} 
-                    className={`w-16 h-16 rounded-lg object-cover border border-white/10 ${src.startsWith('blob:') ? 'opacity-40' : ''}`}
-                    crossOrigin="anonymous"
-                    onError={(e) => {
-                      console.error('Gallery image failed to load:', src);
-                      e.currentTarget.style.opacity = '0.3';
-                    }}
-                  />
-                  {src.startsWith('blob:') ? (
-                    <Loader2 size={14} className="absolute inset-0 m-auto animate-spin text-white" />
-                  ) : (
-                    <button 
-                      type="button" onClick={() => removeGalleryImg(i)}
-                      className="absolute -top-1 -right-1 bg-red-500 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 size={10} className="text-white"/>
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
+            {(form.gallery && form.gallery.length > 0) && (
+              <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
+                {form.gallery.map((src, i) => (
+                  <div key={i} className="relative flex-shrink-0 group">
+                    <div className="w-16 h-16 bg-[#0a0a0c] rounded-lg overflow-hidden border border-white/10">
+                      {src.startsWith('blob:') ? (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Loader2 size={14} className="animate-spin text-white" />
+                        </div>
+                      ) : (
+                        <img 
+                          src={optimizedGallery[i]}
+                          className="w-full h-full object-cover"
+                          alt={`Gallery ${i + 1}`}
+                          loading="lazy"
+                          onError={(e) => {
+                            console.error('Gallery image failed:', src);
+                            // Fallback ke URL asli
+                            if (e.currentTarget.src.includes('wsrv.nl')) {
+                              e.currentTarget.src = src;
+                            }
+                          }}
+                        />
+                      )}
+                    </div>
+                    {!src.startsWith('blob:') && (
+                      <button 
+                        type="button" onClick={() => removeGalleryImg(i)}
+                        className="absolute -top-1 -right-1 bg-red-500 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 size={10} className="text-white"/>
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Links */}
           <div className="space-y-3">
             <label className="block text-xs font-bold text-gray-500 uppercase">Links & Credits</label>
             <input 
