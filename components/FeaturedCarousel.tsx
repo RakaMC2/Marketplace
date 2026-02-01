@@ -12,6 +12,7 @@ export const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ items, onIte
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
+    if (items.length <= 1) return;
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % items.length);
     }, 6000);
@@ -24,65 +25,100 @@ export const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ items, onIte
     }
   }, [index, items, onImageChange]);
 
-  if (!items.length) return null;
+  if (!items || items.length === 0) return null;
 
   const current = items[index];
 
   return (
-    <div className="relative w-full h-[350px] md:h-[400px] rounded-2xl overflow-hidden mb-10 group shadow-2xl border border-white/10">
-      {/* Background with blur */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center transition-all duration-700 ease-in-out blur-xl opacity-50 scale-110"
-        style={{ backgroundImage: `url(${current.img})` }}
-      />
+    <div className="relative w-full h-[350px] md:h-[450px] rounded-2xl overflow-hidden mb-10 group shadow-2xl border border-white/10 bg-[#121214]">
       
-      {/* Content Container */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent flex items-end">
-        <div className="w-full p-6 md:p-10 flex flex-col md:flex-row gap-6 items-start md:items-end justify-between">
-            <div className="flex-1 space-y-2 animate-fade-in w-full md:w-auto">
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 text-xs font-bold border border-yellow-500/30 backdrop-blur-sm">
-                    <Star size={12} fill="currentColor" /> FEATURED
+      {/* 1. LAYER BACKGROUND (Paling Bawah) */}
+      <div className="absolute inset-0 z-0">
+        {items.map((item, i) => (
+          <div 
+            key={item.id || i}
+            className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out scale-105 ${
+              i === index ? 'opacity-60' : 'opacity-0'
+            }`}
+            style={{ 
+              backgroundImage: `url(${item.img})`,
+              filter: 'blur(20px)' // Memberi efek kedalaman
+            }}
+          />
+        ))}
+      </div>
+
+      {/* 2. LAYER GAMBAR UTAMA (Focus Image) */}
+      <div className="absolute inset-0 z-10 flex items-center justify-center md:justify-end md:pr-20 opacity-20 md:opacity-40 pointer-events-none">
+          <img 
+            src={current.img} 
+            alt="" 
+            className="w-full h-full md:w-[60%] md:h-[90%] object-cover rounded-3xl transition-all duration-700 shadow-2xl"
+          />
+      </div>
+      
+      {/* 3. LAYER GRADIENT OVERLAY */}
+      <div className="absolute inset-0 z-20 bg-gradient-to-t from-[#121214] via-[#121214]/60 to-transparent" />
+      <div className="absolute inset-0 z-20 bg-gradient-to-r from-[#121214] via-transparent to-transparent hidden md:block" />
+
+      {/* 4. LAYER KONTEN (Paling Atas) */}
+      <div className="absolute inset-0 z-30 flex items-end">
+        <div className="w-full p-6 md:p-12 flex flex-col md:flex-row gap-6 items-start md:items-end justify-between">
+            <div className="flex-1 space-y-4 animate-in fade-in slide-in-from-left-6 duration-700">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500 text-black text-[10px] font-black uppercase tracking-tighter">
+                    <Star size={12} fill="currentColor" /> Featured
                 </span>
-                <h2 className="text-2xl md:text-5xl font-bold text-white tracking-tight drop-shadow-lg line-clamp-1">{current.title}</h2>
-                <p className="text-gray-200 line-clamp-2 max-w-2xl text-xs md:text-base drop-shadow-md">{current.desc.substring(0, 150)}...</p>
+                
+                <h2 className="text-4xl md:text-6xl font-black text-white leading-tight drop-shadow-2xl">
+                  {current.title}
+                </h2>
+                
+                <p className="text-gray-300 line-clamp-2 max-w-xl text-sm md:text-lg leading-relaxed font-medium">
+                  {current.desc.replace(/[#*`]/g, '')}
+                </p>
+
                 <div className="flex items-center gap-3 pt-2">
-                    <img src={current.img} className="w-6 h-6 md:w-8 md:h-8 rounded-full border border-white/30" alt="" />
-                    <span className="text-xs md:text-sm font-medium">{current.author}</span>
+                    <img src={current.img} className="w-10 h-10 rounded-full border-2 border-primary object-cover shadow-lg" alt="" />
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Creator</span>
+                      <span className="text-sm font-bold text-white">{current.author || 'Member'}</span>
+                    </div>
                 </div>
             </div>
             
             <button 
                 onClick={() => onItemClick(current)}
-                className="bg-white text-black hover:bg-gray-200 px-6 py-3 rounded-full font-bold transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(255,255,255,0.3)] whitespace-nowrap text-sm md:text-base w-full md:w-auto text-center"
+                className="bg-primary hover:bg-white hover:text-black text-white px-10 py-4 rounded-2xl font-black transition-all transform hover:scale-105 active:scale-95 shadow-2xl whitespace-nowrap text-sm md:text-base w-full md:w-auto tracking-tight"
             >
-                Check it out
+                OPEN PROJECT
             </button>
         </div>
       </div>
 
-      {/* Controls */}
+      {/* 5. NAVIGATION (Z-40) */}
       {items.length > 1 && (
         <>
             <button 
-                onClick={() => setIndex((index - 1 + items.length) % items.length)}
-                className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 hover:bg-black/60 text-white backdrop-blur-md border border-white/10 transition-all opacity-0 group-hover:opacity-100"
+                onClick={(e) => { e.stopPropagation(); setIndex((index - 1 + items.length) % items.length); }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-xl bg-white/5 hover:bg-primary text-white backdrop-blur-xl border border-white/10 transition-all opacity-0 group-hover:opacity-100 z-40 hidden md:block"
             >
-                <ChevronLeft />
+                <ChevronLeft size={24} />
             </button>
             <button 
-                onClick={() => setIndex((index + 1) % items.length)}
-                className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 hover:bg-black/60 text-white backdrop-blur-md border border-white/10 transition-all opacity-0 group-hover:opacity-100"
+                onClick={(e) => { e.stopPropagation(); setIndex((index + 1) % items.length); }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-xl bg-white/5 hover:bg-primary text-white backdrop-blur-xl border border-white/10 transition-all opacity-0 group-hover:opacity-100 z-40 hidden md:block"
             >
-                <ChevronRight />
+                <ChevronRight size={24} />
             </button>
             
-            {/* Indicators */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-40">
                 {items.map((_, idx) => (
                     <button 
                         key={idx}
                         onClick={() => setIndex(idx)}
-                        className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full transition-all ${idx === index ? 'w-4 md:w-6 bg-white' : 'bg-white/40 hover:bg-white/80'}`}
+                        className={`transition-all duration-300 rounded-full ${
+                          idx === index ? 'w-10 h-1.5 bg-primary' : 'w-2 h-1.5 bg-white/20'
+                        }`}
                     />
                 ))}
             </div>
