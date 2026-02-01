@@ -92,99 +92,193 @@ export function showToast(message: string, duration: number = 3000): void {
 
 const userCache: Record<string, User> = {};
 
-const UserAvatar: React.FC<{ userId: string; className?: string; onClick?: () => void }> = ({ userId, className, onClick }) => {
-  const [user, setUser] = useState<User | null>(userCache[userId] || null);
-  const [imgError, setImgError] = useState(false);
+const UserAvatar: React.FC<{ userId: string; className?: string; onClick?: () => void; editable?: boolean }> = ({ userId, className, onClick, editable = false }) => {
+  const [user, setUser] = useState<User | null>(() => userCache[userId] || null);
+  const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    let isMounted = true;
     if (!userId) return;
-    
     if (userCache[userId]) {
       setUser(userCache[userId]);
+    }
+    const userRef = db.ref(`users/${userId}`);
+    userRef.on('value', (snap: any) => {
+      const val = snap.val();
+      if (val && isMounted) {
+        userCache[userId] = val;
+        setUser(val);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      userRef.off(); 
+    };
+  }, [userId]); 
+
+  const uploadToImgDB = async (file: File): Promise<string> => {
+    const IMGBB_API_KEY = '062b241650d75b270a8032e4fcd6e52b';
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    try {
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('ImgBB Error:', errorData);
+        throw new Error(errorData?.error?.message || 'Upload failed');
+      }
+      
+      const resData = await response.json();
+      console.log('ImgBB Response:', resData);
+      
+      const imageUrl = resData.data.image?.url || resData.data.url || resData.data.display_url;
+      
+      if (!imageUrl) {
+        throw new Error('No image URL in response');
+      }
+      
+      const secureUrl = imageUrl.replace(/^http:/, "https:");
+      console.log('Avatar URL:', secureUrl);
+      
+      return secureUrl;
+    } catch (error) {
+      console.error('Upload to ImgBB failed:', error);
+      throw error;
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('Image too large. Max 2MB.', 5000);
       return;
     }
 
-    const userRef = db.ref(`users/${userId}`);
-    const handleValue = (snap: any) => {
-      const val = snap.val();
-      if (val) {
-        userCache[userId] = val;
-        setUser(val);
-        setImgError(false); // Reset error saat data baru
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select an image file.', 5000);
+      return;
+    }
+
+    const localBlob = URL.createObjectURL(file);
+    setPreviewUrl(localBlob);
+    setUploading(true);
+
+    try {
+      const imageUrl = await uploadToImgDB(file);
+      
+      await db.ref(`users/${userId}/profilePic`).set(imageUrl);
+      
+      if (userCache[userId]) {
+        userCache[userId] = { ...userCache[userId], profilePic: imageUrl };
+        setUser({ ...userCache[userId] });
+      }
+      
+      showToast('Profile picture updated successfully! ✓', 8000);
+      
+      setTimeout(() => {
+        setPreviewUrl(null);
+      }, 1000);
+      
+    } catch (error: any) {
+      console.error('Upload failed:', error);
+      showToast(error?.message || 'Failed to upload image. Please try again.', 8000);
+      setPreviewUrl(null);
+    } finally {
+      setUploading(false);
+      URL.revokeObjectURL(localBlob);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleAvatarClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (editable && !uploading) {
+      fileInputRef.current?.click();
+    } else if (onClick) {
+      onClick();
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
       }
     };
-
-    userRef.on('value', handleValue);
-    
-    return () => {
-      userRef.off('value', handleValue);
-    };
-  }, [userId]);
+  }, [previewUrl]);
 
   const border = BORDERS[user?.profileBorder || 'default'];
   
-  // Optimize image URL
-  const getOptimizedImageUrl = (url: string | undefined): string => {
-    if (!url) return ASSETS.NO_PFP;
-    
-    // Jika sudah error atau URL lokal, return as-is
-    if (imgError || url.startsWith('data:') || url.startsWith('blob:')) {
-      return url;
-    }
-    
-    // Jika URL dari ImgBB, optimize dengan wsrv.nl
-    if (url.includes('i.ibb.co') || url.includes('imgbb.com')) {
-      try {
-        const encodedUrl = encodeURIComponent(url);
-        return `https://wsrv.nl/?url=${encodedUrl}&w=200&q=85&output=webp&il`;
-      } catch (e) {
-        console.error('Failed to encode URL:', e);
-        return url;
-      }
-    }
-    
-    return url;
-  };
+  const displayImage = uploading && previewUrl 
+    ? previewUrl 
+    : (user?.profilePic || ASSETS.NO_PFP);
 
-  const displayImage = imgError ? ASSETS.NO_PFP : getOptimizedImageUrl(user?.profilePic);
-  
   return (
     <div 
-      className={`relative rounded-full p-[2px] ${border?.class || ''} ${className || 'w-10 h-10'} ${onClick ? 'cursor-pointer' : ''} flex-shrink-0 transition-transform hover:scale-105 overflow-hidden`}
-      onClick={onClick}
+      className={`relative rounded-full p-[2px] ${border?.class || ''} ${className || 'w-10 h-10'} ${editable || onClick ? 'cursor-pointer' : ''} flex-shrink-0 transition-transform hover:scale-105 overflow-hidden`}
+      onClick={handleAvatarClick}
       style={user?.profileBorder === 'custom' && user.customColor ? { 
         boxShadow: `0 0 10px ${user.customColor}`, 
         borderColor: user.customColor, 
         borderStyle: 'solid', 
         borderWidth: '2px' 
       } : {}}
+      title={editable && !uploading ? 'Click to change avatar' : ''}
     >
-      <div className="w-full h-full rounded-full overflow-hidden bg-bg-card">
+      <div className="relative w-full h-full rounded-full overflow-hidden bg-bg-card">
         <img 
           src={displayImage} 
-          className="w-full h-full rounded-full object-cover" 
-          alt={user?.username || 'User'} 
+          className={`w-full h-full object-cover transition-all duration-300 ${uploading ? 'opacity-30 scale-110 blur-sm' : 'opacity-100 scale-100'}`}
+          alt="Avatar"
           loading="lazy"
-          onLoad={() => setImgError(false)}
           onError={(e) => { 
             const target = e.target as HTMLImageElement;
-            console.error('Avatar failed to load:', user?.profilePic);
-            
-            // Jika wsrv.nl gagal, coba URL asli
-            if (target.src.includes('wsrv.nl') && user?.profilePic) {
-              console.log('Retrying with original URL...');
-              target.src = user.profilePic;
-              return;
-            }
-            
-            // Jika tetap gagal, gunakan NO_PFP
-            if (target.src !== ASSETS.NO_PFP) {
-              setImgError(true);
+            if (!uploading && !previewUrl && target.src !== ASSETS.NO_PFP) {
+              console.error('Avatar failed to load:', displayImage);
               target.src = ASSETS.NO_PFP;
             }
           }}
         />
+        
+        {uploading && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 rounded-full backdrop-blur-sm">
+            <div className="w-6 h-6 border-3 border-primary border-t-transparent rounded-full animate-spin mb-1"></div>
+            <span className="text-[8px] text-white font-bold tracking-wide">Uploading...</span>
+          </div>
+        )}
+        
+        {editable && !uploading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/50 transition-all rounded-full opacity-0 hover:opacity-100">
+            <svg className="w-5 h-5 text-white drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+        )}
       </div>
+      
+      {editable && (
+        <input 
+          ref={fileInputRef} 
+          type="file" 
+          accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" 
+          onChange={handleFileChange} 
+          className="hidden"
+          disabled={uploading}
+        />
+      )}
     </div>
   );
 };
@@ -894,7 +988,19 @@ export default function App() {
                                 <tr key={uid} className="group hover:bg-white/5 transition-colors even:bg-white/5">
                                   <td className="py-3 px-4">
                                     <div className="flex items-center gap-3">
-                                      <img src={u.profilePic || ASSETS.NO_PFP} className="w-8 h-8 rounded-full object-cover bg-gray-800"/>
+                                    <img 
+                                      src={u.profilePic || ASSETS.NO_PFP} 
+                                      className="w-8 h-8 rounded-full object-cover bg-gray-800"
+                                      alt={u.username || 'User'}
+                                      loading="lazy"
+                                      onError={(e) => { 
+                                        const target = e.target as HTMLImageElement;
+                                        if (target.src !== ASSETS.NO_PFP) {
+                                          console.error('Profile pic failed to load:', u.profilePic);
+                                          target.src = ASSETS.NO_PFP;
+                                        }
+                                      }}
+                                    />
                                       <div>
                                         <p className="text-white font-medium text-sm">{u.username}</p>
                                         <p className="text-xs text-gray-500">{uid.substring(0,8)}...</p>
