@@ -92,6 +92,8 @@ const UserAvatar: React.FC<{ userId: string; className?: string; onClick?: () =>
       if (val && isMounted) {
         userCache[userId] = val;
         setUser(val);
+        // Clear preview setelah update dari Firebase
+        setPreviewUrl(null);
       }
     });
 
@@ -101,9 +103,57 @@ const UserAvatar: React.FC<{ userId: string; className?: string; onClick?: () =>
     };
   }, [userId]); 
 
+  const uploadToImgBB = async (file: File): Promise<string> => {
+    const IMGBB_API_KEY = '062b241650d75b270a8032e4fcd6e52b';
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    try {
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('ImgBB Error:', errorData);
+        throw new Error(errorData?.error?.message || 'Upload failed');
+      }
+      
+      const resData = await response.json();
+      console.log('ImgBB Response:', resData);
+      
+      const imageUrl = resData.data.image?.url || resData.data.url || resData.data.display_url;
+      
+      if (!imageUrl) {
+        throw new Error('No image URL in response');
+      }
+      
+      const secureUrl = imageUrl.replace(/^http:/, "https:");
+      console.log('Avatar URL:', secureUrl);
+      
+      return secureUrl;
+    } catch (error) {
+      console.error('Upload to ImgBB failed:', error);
+      throw error;
+    }
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Validasi ukuran (max 2MB untuk avatar)
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('Image too large. Max 2MB.');
+      return;
+    }
+
+    // Validasi tipe file
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select an image file.');
+      return;
+    }
 
     const localBlob = URL.createObjectURL(file);
     setPreviewUrl(localBlob);
@@ -111,15 +161,29 @@ const UserAvatar: React.FC<{ userId: string; className?: string; onClick?: () =>
 
     try {
       const imageUrl = await uploadToImgBB(file);
+      
+      // Update ke Firebase
       await db.ref(`users/${userId}/profilePic`).set(imageUrl);
       
-    } catch (error) {
+      // Update local cache immediately
+      if (userCache[userId]) {
+        userCache[userId] = { ...userCache[userId], profilePic: imageUrl };
+        setUser({ ...userCache[userId] });
+      }
+      
+      showToast('Profile picture updated!');
+      
+    } catch (error: any) {
       console.error('Upload failed:', error);
-      showToast('Failed to upload image.');
+      showToast(error?.message || 'Failed to upload image.');
       setPreviewUrl(null);
     } finally {
       setUploading(false);
       URL.revokeObjectURL(localBlob);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -131,6 +195,15 @@ const UserAvatar: React.FC<{ userId: string; className?: string; onClick?: () =>
       onClick();
     }
   };
+
+  // Clean up blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   const border = BORDERS[user?.profileBorder || 'default'];
   const displayImage = previewUrl || user?.profilePic || ASSETS.NO_PFP;
@@ -145,21 +218,47 @@ const UserAvatar: React.FC<{ userId: string; className?: string; onClick?: () =>
         borderStyle: 'solid', 
         borderWidth: '2px' 
       } : {}}
+      title={editable && !uploading ? 'Click to change avatar' : ''}
     >
-      <img 
-        src={displayImage} 
-        className={`w-full h-full rounded-full object-cover bg-bg-card transition-opacity duration-300 ${uploading ? 'opacity-40' : 'opacity-100'}`}
-        alt="Avatar"
-        onError={(e) => { (e.target as HTMLImageElement).src = ASSETS.NO_PFP; }}
-      />
+      <div className="relative w-full h-full rounded-full overflow-hidden bg-bg-card">
+        <img 
+          src={displayImage} 
+          className={`w-full h-full object-cover transition-all duration-300 ${uploading ? 'opacity-30 scale-110' : 'opacity-100 scale-100'}`}
+          alt="Avatar"
+          loading="lazy"
+          onError={(e) => { 
+            console.error('Avatar failed to load:', displayImage);
+            (e.target as HTMLImageElement).src = ASSETS.NO_PFP; 
+          }}
+        />
+        
+        {uploading && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 rounded-full">
+            <div className="w-6 h-6 border-3 border-primary border-t-transparent rounded-full animate-spin mb-1"></div>
+            <span className="text-[8px] text-white font-bold">Uploading...</span>
+          </div>
+        )}
+        
+        {editable && !uploading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/40 transition-all rounded-full opacity-0 hover:opacity-100">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+        )}
+      </div>
       
-      {uploading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full">
-          <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-        </div>
+      {editable && (
+        <input 
+          ref={fileInputRef} 
+          type="file" 
+          accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" 
+          onChange={handleFileChange} 
+          className="hidden"
+          disabled={uploading}
+        />
       )}
-      
-      {editable && <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />}
     </div>
   );
 };
