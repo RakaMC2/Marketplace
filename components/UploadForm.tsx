@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, LayoutGrid, Image as ImageIcon, AlertCircle, Upload } from 'lucide-react';
+import { X, LayoutGrid, Image as ImageIcon, AlertCircle, Upload, Trash2, Loader2 } from 'lucide-react';
 import { Item } from '../types';
 import { CustomDropdown } from './CustomDropdown';
+import { showToast } from '../app';
 
 interface UploadFormProps {
   initialData: Partial<Item>;
@@ -20,12 +21,6 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
   const [uploadingImg, setUploadingImg] = useState(false);
   const [uploadingGallery, setUploadingGallery] = useState(false);
 
-  useEffect(() => {
-    if (form !== initialData) {
-      setIsDirty(true);
-    }
-  }, [form, initialData]);
-
   const uploadToImgBB = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('image', file);
@@ -35,48 +30,26 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
       body: formData,
     });
     
-    if (!response.ok) {
-      throw new Error('Failed to upload image to ImgBB');
-    }
-    
+    if (!response.ok) throw new Error('Upload failed');
     const data = await response.json();
     return data.data.url;
   };
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    
-    if (!form.title || form.title.length < 3) {
-      newErrors.title = "Title must be at least 3 characters.";
-    }
-    
-    if (!form.desc || form.desc.length < 10) {
-      newErrors.desc = "Description must be at least 10 characters.";
-    }
-    
+    if (!form.title || form.title.length < 3) newErrors.title = "Minimal 3 karakter.";
+    if (!form.desc || form.desc.length < 10) newErrors.desc = "Minimal 10 karakter.";
     if (!form.link) {
-      newErrors.link = "Download link is required.";
+      newErrors.link = "Link download wajib diisi.";
     } else {
-      try {
-        new URL(form.link);
-      } catch (_) {
-        newErrors.link = "Please enter a valid URL (e.g., https://...)";
-      }
+      try { new URL(form.link); } catch { newErrors.link = "URL tidak valid."; }
     }
-
-    if (form.youtube && form.youtube.trim() !== "") {
-      try {
-        new URL(form.youtube);
-      } catch (_) {
-        newErrors.youtube = "Invalid YouTube URL.";
-      }
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleChange = (field: keyof Item, value: any) => {
+    setIsDirty(true);
     setForm(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => {
@@ -87,203 +60,186 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
     }
   };
 
-  const handleClose = () => {
-    if (isDirty) {
-      if (window.confirm("You have unsaved changes. Are you sure you want to close?")) {
-        onClose();
-      }
-    } else {
-      onClose();
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-    
-    setLoading(true);
-    try {
-      await onSubmit(form);
-      setIsDirty(false);
-      onClose();
-    } catch (error) {
-      console.error(error);
-      alert('Failed to upload.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>, field: 'img' | 'gallery') => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     setIsDirty(true);
 
     if (field === 'img') {
+      const file = files[0];
+      const localPreview = URL.createObjectURL(file); // Preview Instan
+      setForm(prev => ({ ...prev, img: localPreview }));
+      
       setUploadingImg(true);
       try {
-        const url = await uploadToImgBB(files[0]);
-        setForm(prev => ({ ...prev, img: url }));
+        const remoteUrl = await uploadToImgBB(file);
+        setForm(prev => ({ ...prev, img: remoteUrl }));
       } catch (error) {
-        console.error(error);
-        alert('Failed to upload image to ImgBB. Please try again.');
+        showToast('Failed to upload cover.');
+        setForm(prev => ({ ...prev, img: initialData.img }));
       } finally {
         setUploadingImg(false);
       }
     } else {
       setUploadingGallery(true);
+      const fileArray = Array.from(files).slice(0, 30);
+      const localPreviews = fileArray.map(f => URL.createObjectURL(f));
+      
+      // Tambahkan preview lokal ke list galeri
+      setForm(prev => ({ 
+        ...prev, 
+        gallery: [...(prev.gallery || []), ...localPreviews] 
+      }));
+
       try {
-        const uploadPromises = Array.from(files).slice(0, 30).map(file => uploadToImgBB(file));
-        const urls = await Promise.all(uploadPromises);
-        setForm(prev => ({ ...prev, gallery: urls }));
+        const uploadPromises = fileArray.map(f => uploadToImgBB(f));
+        const remoteUrls = await Promise.all(uploadPromises);
+        
+        // Ganti preview blob dengan URL asli
+        setForm(prev => ({
+          ...prev,
+          gallery: [...(prev.gallery || []).filter(url => !url.startsWith('blob:')), ...remoteUrls]
+        }));
       } catch (error) {
-        console.error(error);
-        alert('Failed to upload gallery images to ImgBB. Please try again.');
+        showToast('Some gallery images failed to upload.');
       } finally {
         setUploadingGallery(false);
       }
     }
   };
 
+  const removeGalleryImg = (index: number) => {
+    setForm(prev => ({
+      ...prev,
+      gallery: (prev.gallery || []).filter((_, i) => i !== index)
+    }));
+    setIsDirty(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+    setLoading(true);
+    try {
+      await onSubmit(form);
+      setIsDirty(false);
+      onClose();
+    } catch (error) {
+      showToast('Failed to save data.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
       <div className="glass-panel w-full max-w-2xl rounded-2xl shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto border border-white/10 bg-[#121214]">
-        <button onClick={handleClose} className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors"><X/></button>
+        <button onClick={() => isDirty ? window.confirm("Batal?") && onClose() : onClose()} className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors">
+          <X size={20}/>
+        </button>
+        
         <h2 className="text-2xl font-bold mb-6 text-white">{form.id ? 'Edit Creation' : 'Upload Creation'}</h2>
         
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Info Utama */}
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Basic Info</label>
             <input 
-              required 
-              placeholder="Title" 
-              value={form.title || ''} 
+              required placeholder="Title" value={form.title || ''} 
               onChange={e => handleChange('title', e.target.value)} 
-              className={`w-full bg-[#1a1a1e] border rounded-xl p-3 outline-none transition-colors mb-2 text-white placeholder:text-gray-600 focus:ring-1 ${errors.title ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-white/5 focus:border-primary/50 focus:ring-primary/50'}`}
+              className={`w-full bg-[#1a1a1e] border rounded-xl p-3 outline-none transition-colors mb-2 text-white ${errors.title ? 'border-red-500' : 'border-white/5 focus:border-primary/50'}`}
             />
-            {errors.title && <p className="text-red-500 text-xs flex items-center gap-1 mb-2"><AlertCircle size={12}/> {errors.title}</p>}
-            
             <textarea 
-              required 
-              placeholder="Description (Markdown supported)" 
-              rows={5} 
-              value={form.desc || ''} 
-              onChange={e => handleChange('desc', e.target.value)} 
-              className={`w-full bg-[#1a1a1e] border rounded-xl p-3 outline-none transition-colors text-white placeholder:text-gray-600 focus:ring-1 ${errors.desc ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-white/5 focus:border-primary/50 focus:ring-primary/50'}`}
+              required placeholder="Description (Markdown)" rows={4} 
+              value={form.desc || ''} onChange={e => handleChange('desc', e.target.value)} 
+              className={`w-full bg-[#1a1a1e] border rounded-xl p-3 outline-none text-white ${errors.desc ? 'border-red-500' : 'border-white/5 focus:border-primary/50'}`}
             />
-            {errors.desc && <p className="text-red-500 text-xs flex items-center gap-1 mt-1"><AlertCircle size={12}/> {errors.desc}</p>}
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Kategori */}
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Category</label>
               <CustomDropdown 
                 options={categories.map(c => ({ label: c, value: c }))}
                 value={form.cat || categories[0]}
                 onChange={(val) => handleChange('cat', val)}
-                className="w-full"
                 icon={LayoutGrid}
               />
             </div>
+
+            {/* Cover Image */}
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Cover Image</label>
-              <div className="relative">
-                <label className={`flex items-center justify-center w-full h-[46px] bg-[#1a1a1e] border border-white/5 rounded-xl cursor-pointer hover:bg-white/5 transition-colors text-sm text-gray-400 ${uploadingImg ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                  {uploadingImg ? (
-                    <>
-                      <Upload size={16} className="mr-2 animate-pulse"/>
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <ImageIcon size={16} className="mr-2"/>
-                      {form.img ? "Image Uploaded" : "Choose Image"}
-                    </>
-                  )}
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={e => handleFile(e, 'img')} 
-                    className="hidden"
-                    disabled={uploadingImg}
-                  />
-                </label>
-              </div>
+              <label className="flex items-center justify-center w-full h-[46px] bg-[#1a1a1e] border border-white/5 rounded-xl cursor-pointer hover:bg-white/5 text-sm text-gray-400">
+                <ImageIcon size={16} className="mr-2"/>
+                {uploadingImg ? "Uploading..." : "Choose Image"}
+                <input type="file" accept="image/*" onChange={e => handleFile(e, 'img')} className="hidden" disabled={uploadingImg} />
+              </label>
               {form.img && (
-                <div className="mt-2">
-                  <img src={form.img} alt="Cover preview" className="w-full h-24 object-cover rounded-lg border border-white/10"/>
+                <div className="mt-2 relative w-full h-24 group">
+                  <img src={form.img} className={`w-full h-full object-cover rounded-lg border border-white/10 ${uploadingImg ? 'opacity-40' : ''}`} alt="Preview"/>
+                  {uploadingImg && <Loader2 className="absolute inset-0 m-auto animate-spin text-primary" />}
                 </div>
               )}
             </div>
           </div>
 
+          {/* Galeri */}
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Gallery (Max 30)</label>
-            <div className="relative">
-              <label className={`flex items-center justify-center w-full h-[46px] bg-[#1a1a1e] border border-white/5 rounded-xl cursor-pointer hover:bg-white/5 transition-colors text-sm text-gray-400 ${uploadingGallery ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                {uploadingGallery ? (
-                  <>
-                    <Upload size={16} className="mr-2 animate-pulse"/>
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <ImageIcon size={16} className="mr-2"/>
-                    Add Screenshots
-                  </>
-                )}
-                <input 
-                  type="file" 
-                  multiple 
-                  accept="image/*" 
-                  onChange={e => handleFile(e, 'gallery')} 
-                  className="hidden"
-                  disabled={uploadingGallery}
-                />
-              </label>
-            </div>
+            <label className="flex items-center justify-center w-full h-[46px] bg-[#1a1a1e] border border-white/5 rounded-xl cursor-pointer hover:bg-white/5 text-sm text-gray-400">
+              <Upload size={16} className="mr-2"/>
+              {uploadingGallery ? "Uploading Gallery..." : "Add Screenshots"}
+              <input type="file" multiple accept="image/*" onChange={e => handleFile(e, 'gallery')} className="hidden" disabled={uploadingGallery} />
+            </label>
+            
             <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
               {(form.gallery || []).map((src, i) => (
-                <img key={i} src={src} className="w-16 h-16 rounded-lg object-cover border border-white/10"/>
+                <div key={i} className="relative flex-shrink-0 group">
+                  <img src={src} className={`w-16 h-16 rounded-lg object-cover border border-white/10 ${src.startsWith('blob:') ? 'opacity-40' : ''}`} />
+                  {src.startsWith('blob:') ? (
+                    <Loader2 size={14} className="absolute inset-0 m-auto animate-spin text-white" />
+                  ) : (
+                    <button 
+                      type="button" onClick={() => removeGalleryImg(i)}
+                      className="absolute -top-1 -right-1 bg-red-500 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 size={10} className="text-white"/>
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Links</label>
+          {/* Links */}
+          <div className="space-y-3">
+            <label className="block text-xs font-bold text-gray-500 uppercase">Links & Credits</label>
             <input 
-              required 
-              placeholder="Download Link (MediaFire, Drive, etc.)" 
-              value={form.link || ''} 
+              required placeholder="Download Link" value={form.link || ''} 
               onChange={e => handleChange('link', e.target.value)} 
-              className={`w-full bg-[#1a1a1e] border rounded-xl p-3 outline-none mb-2 text-white placeholder:text-gray-600 focus:ring-1 ${errors.link ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-white/5 focus:border-primary/50 focus:ring-primary/50'}`}
+              className={`w-full bg-[#1a1a1e] border rounded-xl p-3 outline-none text-white ${errors.link ? 'border-red-500' : 'border-white/5'}`}
             />
-            {errors.link && <p className="text-red-500 text-xs flex items-center gap-1 mb-2"><AlertCircle size={12}/> {errors.link}</p>}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <input 
-                  placeholder="YouTube Trailer URL" 
-                  value={form.youtube || ''} 
-                  onChange={e => handleChange('youtube', e.target.value)} 
-                  className={`w-full bg-[#1a1a1e] border rounded-xl p-3 outline-none text-white placeholder:text-gray-600 focus:ring-1 ${errors.youtube ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-white/5 focus:border-primary/50 focus:ring-primary/50'}`}
-                />
-                {errors.youtube && <p className="text-red-500 text-xs flex items-center gap-1 mt-1"><AlertCircle size={12}/> {errors.youtube}</p>}
-              </div>
+            <div className="grid grid-cols-2 gap-3">
               <input 
-                placeholder="Original Creator Name" 
-                value={form.originalCreator || ''} 
+                placeholder="YouTube URL" value={form.youtube || ''} 
+                onChange={e => handleChange('youtube', e.target.value)} 
+                className="bg-[#1a1a1e] border border-white/5 rounded-xl p-3 text-white outline-none"
+              />
+              <input 
+                placeholder="Creator Name" value={form.originalCreator || ''} 
                 onChange={e => handleChange('originalCreator', e.target.value)} 
-                className="w-full bg-[#1a1a1e] border border-white/5 rounded-xl p-3 outline-none focus:border-primary/50 text-white placeholder:text-gray-600 focus:ring-1 focus:ring-primary/50"
+                className="bg-[#1a1a1e] border border-white/5 rounded-xl p-3 text-white outline-none"
               />
             </div>
           </div>
 
           <button 
             disabled={loading || uploadingImg || uploadingGallery} 
-            className="w-full bg-primary hover:bg-primary-light py-4 rounded-xl font-bold shadow-lg shadow-purple-900/30 transition-all hover:-translate-y-1 mt-4 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-primary hover:bg-primary-light py-4 rounded-xl font-bold shadow-lg shadow-purple-900/30 transition-all hover:-translate-y-1 text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Processing...' : uploadingImg || uploadingGallery ? 'Uploading Images...' : (form.id ? 'Save Changes' : 'Post Creation')}
+            {loading ? 'Processing...' : (form.id ? 'Save Changes' : 'Post Creation')}
           </button>
         </form>
       </div>
