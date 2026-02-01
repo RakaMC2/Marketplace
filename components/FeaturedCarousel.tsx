@@ -8,8 +8,24 @@ interface FeaturedCarouselProps {
   onImageChange?: (imageUrl: string) => void;
 }
 
+// Hook untuk optimize image
+const useOptimizedImageSrc = (src: string | undefined) => {
+  if (!src) return '';
+  if (src.startsWith('data:')) return src;
+  if (src.startsWith('blob:')) return src;
+
+  try {
+    const encodedUrl = encodeURIComponent(src);
+    return `https://wsrv.nl/?url=${encodedUrl}&w=1200&q=85&output=webp&il`;
+  } catch (e) {
+    return src;
+  }
+};
+
 export const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ items, onItemClick, onImageChange }) => {
   const [index, setIndex] = useState(0);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     if (items.length <= 1) return;
@@ -23,38 +39,76 @@ export const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ items, onIte
     if (items.length > 0 && onImageChange) {
       onImageChange(items[index].img);
     }
+    // Reset image state saat index berubah
+    setImageLoaded(false);
+    setImageError(false);
   }, [index, items, onImageChange]);
 
   if (!items || items.length === 0) return null;
 
   const current = items[index];
+  const optimizedImg = useOptimizedImageSrc(current.img);
 
   return (
     <div className="relative w-full h-[350px] md:h-[450px] rounded-2xl overflow-hidden mb-10 group shadow-2xl border border-white/10 bg-[#121214]">
       
       {/* 1. LAYER BACKGROUND (Paling Bawah) */}
       <div className="absolute inset-0 z-0">
-        {items.map((item, i) => (
-          <div 
-            key={item.id || i}
-            className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out scale-105 ${
-              i === index ? 'opacity-60' : 'opacity-0'
-            }`}
-            style={{ 
-              backgroundImage: `url(${item.img})`,
-              filter: 'blur(20px)' // Memberi efek kedalaman
-            }}
-          />
-        ))}
+        {items.map((item, i) => {
+          const bgImg = useOptimizedImageSrc(item.img);
+          return (
+            <div 
+              key={item.id || i}
+              className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out scale-105 ${
+                i === index ? 'opacity-60' : 'opacity-0'
+              }`}
+              style={{
+                backgroundImage: bgImg ? `url(${bgImg})` : 'none',
+                filter: 'blur(20px)',
+                backgroundColor: '#1a1a1e'
+              }}
+            />
+          );
+        })}
       </div>
 
       {/* 2. LAYER GAMBAR UTAMA (Focus Image) */}
       <div className="absolute inset-0 z-10 flex items-center justify-center md:justify-end md:pr-20 opacity-20 md:opacity-40 pointer-events-none">
-          <img 
-            src={current.img} 
-            alt="" 
-            className="w-full h-full md:w-[60%] md:h-[90%] object-cover rounded-3xl transition-all duration-700 shadow-2xl"
-          />
+        <div className="relative w-full h-full md:w-[60%] md:h-[90%]">
+          {!imageLoaded && !imageError && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
+          
+          {imageError ? (
+            <div className="w-full h-full flex items-center justify-center bg-[#1a1a1e] rounded-3xl">
+              <div className="text-center text-gray-500">
+                <Star size={48} className="mx-auto mb-2 opacity-20" />
+                <p className="text-sm">Image unavailable</p>
+              </div>
+            </div>
+          ) : (
+            <img 
+              src={optimizedImg || current.img} 
+              alt={current.title}
+              className={`w-full h-full object-cover rounded-3xl transition-all duration-700 shadow-2xl ${
+                imageLoaded ? 'opacity-100' : 'opacity-0'
+              }`}
+              onLoad={() => setImageLoaded(true)}
+              onError={(e) => {
+                console.error('Featured image failed to load:', current.img);
+                // Fallback ke URL asli jika wsrv gagal
+                if (e.currentTarget.src.includes('wsrv.nl') && current.img) {
+                  e.currentTarget.src = current.img;
+                } else {
+                  setImageError(true);
+                }
+              }}
+              loading="eager"
+            />
+          )}
+        </div>
       </div>
       
       {/* 3. LAYER GRADIENT OVERLAY */}
@@ -74,11 +128,20 @@ export const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ items, onIte
                 </h2>
                 
                 <p className="text-gray-300 line-clamp-2 max-w-xl text-sm md:text-lg leading-relaxed font-medium">
-                  {current.desc.replace(/[#*`]/g, '')}
+                  {current.desc?.replace(/[#*`]/g, '') || 'No description available'}
                 </p>
 
                 <div className="flex items-center gap-3 pt-2">
-                    <img src={current.img} className="w-10 h-10 rounded-full border-2 border-primary object-cover shadow-lg" alt="" />
+                    <div className="relative w-10 h-10 rounded-full border-2 border-primary overflow-hidden bg-[#1a1a1e]">
+                      <img 
+                        src={useOptimizedImageSrc(current.img)} 
+                        className="w-full h-full object-cover" 
+                        alt={current.author || 'Creator'}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
                     <div className="flex flex-col">
                       <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Creator</span>
                       <span className="text-sm font-bold text-white">{current.author || 'Member'}</span>
@@ -126,4 +189,4 @@ export const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ items, onIte
       )}
     </div>
   );
-};
+}
