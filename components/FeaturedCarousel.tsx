@@ -5,9 +5,10 @@ import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
 interface FeaturedCarouselProps {
   items: Item[];
   onItemClick: (item: Item) => void;
+  onImageChange?: (imageUrl: string) => void;
 }
 
-export const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ items, onItemClick }) => {
+export const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ items, onItemClick, onImageChange }) => {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -16,6 +17,12 @@ export const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ items, onIte
     }, 6000);
     return () => clearInterval(timer);
   }, [items.length]);
+
+  useEffect(() => {
+    if (items.length > 0 && onImageChange) {
+      onImageChange(items[index].img);
+    }
+  }, [index, items, onImageChange]);
 
   if (!items.length) return null;
 
