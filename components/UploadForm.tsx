@@ -133,7 +133,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
     } else {
       setUploadingGallery(true);
       try {
-        const uploadPromises = Array.from(files).slice(0, 5).map(file => uploadToImgBB(file));
+        const uploadPromises = Array.from(files).slice(0, 30).map(file => uploadToImgBB(file));
         const urls = await Promise.all(uploadPromises);
         setForm(prev => ({ ...prev, gallery: urls }));
       } catch (error) {
@@ -218,7 +218,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Gallery (Max 5)</label>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Gallery (Max 30)</label>
             <div className="relative">
               <label className={`flex items-center justify-center w-full h-[46px] bg-[#1a1a1e] border border-white/5 rounded-xl cursor-pointer hover:bg-white/5 transition-colors text-sm text-gray-400 ${uploadingGallery ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 {uploadingGallery ? (
