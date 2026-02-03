@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, LayoutGrid, Image as ImageIcon, AlertCircle, Upload, Trash2, Loader2 } from 'lucide-react';
 import { Item } from '../types';
 import { CustomDropdown } from './CustomDropdown';
-import { showToast } from '../App';
+import { CustomToast } from './CustomToast';
 
 interface UploadFormProps {
   initialData: Partial<Item>;
@@ -112,7 +112,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
       
       // Validasi ukuran file (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        showToast('Image too large. Max 5MB.');
+        CustomToast('Image too large. Max 5MB.');
         return;
       }
       
@@ -124,10 +124,10 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
         const remoteUrl = await uploadToImgBB(file);
         URL.revokeObjectURL(localPreview);
         setForm(prev => ({ ...prev, img: remoteUrl }));
-        showToast('Cover uploaded!');
+        CustomToast('Cover uploaded!');
       } catch (error: any) {
         console.error('Cover upload error:', error);
-        showToast(error?.message || 'Failed to upload cover.');
+        CustomToast(error?.message || 'Failed to upload cover.');
         setForm(prev => ({ ...prev, img: initialData.img || '' }));
         URL.revokeObjectURL(localPreview);
       } finally {
@@ -139,7 +139,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
       // Validasi ukuran tiap file
       const validFiles = fileArray.filter(f => {
         if (f.size > 5 * 1024 * 1024) {
-          showToast(`${f.name} too large. Skipped.`);
+          CustomToast(`${f.name} too large. Skipped.`);
           return false;
         }
         return true;
@@ -179,13 +179,13 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
         }));
         
         if (remoteUrls.length > 0) {
-          showToast(`${remoteUrls.length}/${validFiles.length} images uploaded!`);
+          CustomToast(`${remoteUrls.length}/${validFiles.length} images uploaded!`);
         } else {
-          showToast('All uploads failed. Please try again.');
+          CustomToast('All uploads failed. Please try again.');
         }
       } catch (error) {
         console.error('Gallery upload error:', error);
-        showToast('Upload failed. Please try again.');
+        CustomToast('Upload failed. Please try again.');
         setForm(prev => ({
           ...prev,
           gallery: (prev.gallery || []).filter(url => !url.startsWith('blob:'))
@@ -215,7 +215,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
     if (!validate()) return;
     
     if (uploadingImg || uploadingGallery) {
-      showToast('Please wait for uploads to complete');
+      CustomToast('Please wait for uploads to complete');
       return;
     }
     
@@ -223,7 +223,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
                         (form.gallery || []).some(url => url.startsWith('blob:'));
     
     if (hasBlobUrls) {
-      showToast('Please wait for all images to finish uploading');
+      CustomToast('Please wait for all images to finish uploading');
       return;
     }
     
@@ -234,7 +234,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({ initialData, categories,
       onClose();
     } catch (error) {
       console.error('Submit error:', error);
-      showToast('Failed to save data.');
+      CustomToast('Failed to save data.');
     } finally {
       setLoading(false);
     }
