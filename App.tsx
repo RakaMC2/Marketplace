@@ -9,6 +9,8 @@ import { FeaturedCarousel } from './components/FeaturedCarousel';
 import { CustomDropdown } from './components/CustomDropdown';
 import { UploadForm } from './components/UploadForm';
 import { LazyImage } from './components/LazyImage';
+import { CustomToast } from './components/CustomToast';
+import { CustomConfirm } from './components/CustomConfirm';
 import { 
   Search, Menu, X, Upload, LogOut, 
   Trash2, Edit, Play, 
@@ -55,7 +57,6 @@ const uploadToImgBB = async (file: File): Promise<string> => {
     const data = await response.json();
     console.log('ImgBB Response:', data);
     
-    // Prioritas URL: image.url > url > display_url
     const imageUrl = data.data.image?.url || data.data.url || data.data.display_url;
     
     if (!imageUrl) {
@@ -63,7 +64,6 @@ const uploadToImgBB = async (file: File): Promise<string> => {
       throw new Error('No image URL returned from ImgBB');
     }
     
-    // Pastikan HTTPS
     const secureUrl = imageUrl.replace(/^http:/, "https:");
     console.log('Final image URL:', secureUrl);
     
@@ -73,22 +73,6 @@ const uploadToImgBB = async (file: File): Promise<string> => {
     throw error;
   }
 };
-
-export function showToast(message: string, duration: number = 3000): void {
-    const toast: HTMLElement | null = document.getElementById('toast');
-    
-    if (!toast) {
-        console.error('Element toast not found');
-        return;
-    }
-    
-    toast.textContent = message;
-    toast.className = 'toast show';
-    
-    setTimeout((): void => {
-        toast.className = toast.className.replace('show', '');
-    }, duration);
-}
 
 const userCache: Record<string, User> = {};
 
@@ -160,12 +144,12 @@ const UserAvatar: React.FC<{ userId: string; className?: string; onClick?: () =>
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      showToast('Image too large. Max 2MB.', 5000);
+      CustomToast('Image too large. Max 2MB.', 5000);
       return;
     }
 
     if (!file.type.startsWith('image/')) {
-      showToast('Please select an image file.', 5000);
+      CustomToast('Please select an image file.', 5000);
       return;
     }
 
@@ -183,7 +167,7 @@ const UserAvatar: React.FC<{ userId: string; className?: string; onClick?: () =>
         setUser({ ...userCache[userId] });
       }
       
-      showToast('Profile picture updated successfully! ✓', 8000);
+      CustomToast('Profile picture updated successfully! ✓', 8000);
       
       setTimeout(() => {
         setPreviewUrl(null);
@@ -191,7 +175,7 @@ const UserAvatar: React.FC<{ userId: string; className?: string; onClick?: () =>
       
     } catch (error: any) {
       console.error('Upload failed:', error);
-      showToast(error?.message || 'Failed to upload image. Please try again.', 8000);
+      CustomToast(error?.message || 'Failed to upload image. Please try again.', 8000);
       setPreviewUrl(null);
     } finally {
       setUploading(false);
@@ -334,7 +318,7 @@ export default function App() {
         db.ref(`users/${u.uid}`).on('value', (snapshot: any) => {
           const val = snapshot.val();
           if (val?.banned) {
-            showToast("You have been banned.");
+            CustomToast("You have been banned.");
             auth.signOut();
             return;
           }
@@ -456,7 +440,7 @@ export default function App() {
 
     const trimmedInput = authEmail.trim();
     if (!trimmedInput) {
-      showToast("Please enter a username or email.");
+      CustomToast("Please enter a username or email.");
       return;
     }
     setAuthLoading(true);
@@ -480,7 +464,7 @@ export default function App() {
             profileBorder: 'default'
           });
         }
-        showToast('Registered! You are now logged in.');
+        CustomToast('Registered! You are now logged in.');
       } else {
         await auth.signInWithEmailAndPassword(email, authPass);
       }
@@ -489,10 +473,10 @@ export default function App() {
       setAuthPass('');
     } catch (err: any) {
       console.error(err);
-      if (err.code === 'auth/wrong-password') showToast('Invalid Password.');
-      else if (err.code === 'auth/user-not-found') showToast('User not found.');
-      else if (err.code === 'auth/invalid-email') showToast('Invalid email or username format.');
-      else showToast(err.message);
+      if (err.code === 'auth/wrong-password') CustomToast('Invalid Password.');
+      else if (err.code === 'auth/user-not-found') CustomToast('User not found.');
+      else if (err.code === 'auth/invalid-email') CustomToast('Invalid email or username format.');
+      else CustomToast(err.message);
     } finally {
       setAuthLoading(false);
     }
@@ -500,7 +484,7 @@ export default function App() {
 
   const handleUploadSubmit = async (formData: Partial<Item>) => {
     if (!currentUser) return;
-    if (userData?.muted) return showToast("You are muted and cannot upload.");
+    if (userData?.muted) return CustomToast("You are muted and cannot upload.");
 
     const isEdit = !!formData.id;
     const timestamp = Date.now();
@@ -519,13 +503,13 @@ export default function App() {
     if (isEdit) {
       const originalItem = items.find(i => i.id === formData.id);
       if (!originalItem) return;
-      if (!canEditItem(userData, originalItem.authorId)) return showToast("Permission denied.");
+      if (!canEditItem(userData, originalItem.authorId)) return CustomToast("Permission denied.");
 
       const newChangelog = [...(originalItem.changelog || [])];
       newChangelog.push({ version: 'Update', text: 'Updated details', timestamp });
 
       await db.ref(`items/${formData.id}`).update({ ...payload, changelog: newChangelog });
-      showToast('Updated!');
+      CustomToast('Updated!');
     } else {
       await db.ref('items').push({
         ...payload,
@@ -534,13 +518,16 @@ export default function App() {
         changelog: [{ version: 'v1.0', text: 'Initial Release', timestamp }],
         featured: false,
       });
-      showToast('Posted!');
+      CustomToast('Posted!');
     }
   };
 
   const handleDeleteItem = async (id: string, authorId: string) => {
-    if (!canEditItem(userData, authorId)) return showToast("Permission denied.");
-    if (window.confirm('Delete this item permanently?')) {
+    if (!canEditItem(userData, authorId)) return CustomToast("Permission denied.");
+  
+    const confirmed = await CustomConfirm('Delete this item permanently?');
+  
+    if (confirmed) {
       await db.ref(`items/${id}`).set(null);
       if (activeModal === 'detail') setActiveModal(null);
     }
@@ -557,12 +544,12 @@ export default function App() {
   };
 
   const handleRating = async (itemId: string, ratingVal: number, review: string) => {
-    if (!currentUser) return showToast("Please login to rate.");
-    if (userData?.muted) return showToast("You are muted.", 5000);
+    if (!currentUser) return CustomToast("Please login to rate.");
+    if (userData?.muted) return CustomToast("You are muted.", 5000);
     
     const item = items.find(i => i.id === itemId);
     if (item && item.authorId === currentUser.uid) {
-        return showToast("You cannot rate your own creation.");
+        return CustomToast("You cannot rate your own creation.");
     }
 
     try {
@@ -573,10 +560,10 @@ export default function App() {
         review,
         timestamp: Date.now()
       });
-      showToast("Review submitted!");
+      CustomToast("Review submitted!");
     } catch (e) {
       console.error(e);
-      showToast("Error submitting review.");
+      CustomToast("Error submitting review.");
     }
   };
 
@@ -1334,24 +1321,24 @@ export default function App() {
                           if (!f) return;
     
                           if (f.size > 5 * 1024 * 1024) {
-                            showToast("Image too large. Max 5MB.", 5000);
+                            CustomToast("Image too large. Max 5MB.", 5000);
                             return;
                           }
                           if (!f.type.startsWith('image/')) {
-                            showToast("Please select a valid image file.", 5000);
+                            CustomToast("Please select a valid image file.", 5000);
                             return;
                           }
     
                           try {
-                            showToast("Uploading profile picture...", 3000);
+                            CustomToast("Uploading profile picture...", 3000);
                             const url = await uploadToImgBB(f);
                             setEditProfileForm({...editProfileForm, profilePic: url});
-                            showToast("Profile picture uploaded successfully! ✓", 5000);
+                            CustomToast("Profile picture uploaded successfully! ✓", 5000);
       
                             e.target.value = '';
                           } catch (err) {
                             console.error('Upload error:', err);
-                            showToast(err instanceof Error ? err.message : "Failed to upload profile picture. Please try again.", 6000);
+                            CustomToast(err instanceof Error ? err.message : "Failed to upload profile picture. Please try again.", 6000);
                           }
                       }} 
                     className="hidden"/>
@@ -1428,9 +1415,9 @@ export default function App() {
                   <div key={c} className="flex justify-between items-center bg-white/5 p-3 rounded-lg border border-white/5">
                     <span className="text-sm font-medium text-gray-300">{c}</span>
                     <button onClick={() => {
-                      if(window.confirm(`Delete category "${c}"? This cannot be undone.`)) {
-                         const newCats = categories.filter(x => x !== c);
-                         db.ref('categories').set(newCats);
+                      if (await CustomConfirm(`Delete category "${c}"? This cannot be undone.`)) {
+                        const newCats = categories.filter(x => x !== c);
+                        db.ref('categories').set(newCats);
                       }
                     }} className="text-gray-500 hover:text-red-400"><Trash2 size={14}/></button>
                   </div>
