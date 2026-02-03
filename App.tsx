@@ -1415,16 +1415,16 @@ export default function App() {
                   <div key={c} className="flex justify-between items-center bg-white/5 p-3 rounded-lg border border-white/5">
                     <span className="text-sm font-medium text-gray-300">{c}</span>
                     <button onClick={() => {
-                      const confirmed = await CustomConfirm(`Delete category "${c}"? This cannot be undone.`, {
+                      CustomConfirm(`Delete category "${c}"? This cannot be undone.`, {
                           title: 'Delete Category',
                           confirmText: 'Delete',
                           cancelText: 'Cancel'
+                        }).then((confirmed) => {
+                          if (confirmed) {
+                            const newCats = categories.filter(x => x !== c);
+                            db.ref('categories').set(newCats);
+                          }
                         });
-
-                        if (confirmed) {
-                          const newCats = categories.filter(x => x !== c);
-                          db.ref('categories').set(newCats);
-                        }
                     }} className="text-gray-500 hover:text-red-400"><Trash2 size={14}/></button>
                   </div>
                 ))}
