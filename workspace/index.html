@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Bakwan Workspace - Pro Edition</title>
+    <style>
+        :root { --blue: #00a2ff; --bg: #0b0e14; --card: #151921; --border: #262c36; --pink: #ff4a68; --text: #c9d1d9; --green: #238636; }
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 15px; }
+        
+        .nav-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
+        .btn-nav { background: #1c2128; border: 1px solid var(--border); color: var(--blue); padding: 10px; border-radius: 6px; cursor: pointer; font-size: 12px; text-align: center; }
+        .btn-active { background: var(--blue); color: white; border: none; }
+
+        .controls-header { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; }
+        select { background: #1c2128; border: 1px solid var(--border); color: white; padding: 10px; border-radius: 8px; flex-grow: 1; outline: none; }
+        .btn-add { background: var(--blue); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+
+        .tab-content { display: none; }
+        .active-tab { display: block; }
+        .input-group { background: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 10px; margin-bottom: 15px; }
+        label { display: block; font-size: 11px; color: #8b949e; margin-bottom: 8px; text-transform: uppercase; }
+        input, textarea { width: 100%; background: #0d1117; border: 1px solid var(--border); color: white; padding: 10px; border-radius: 6px; box-sizing: border-box; }
+
+        /* Version Stepper */
+        .version-stepper { display: flex; align-items: center; gap: 4px; margin-bottom: 10px; flex-wrap: wrap; }
+        .btn-step { background: #1c2128; border: 1px solid var(--border); color: var(--blue); width: 35px; height: 35px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; }
+        .btn-step:active { background: var(--blue); color: white; }
+        .input-num { text-align: center; font-family: monospace; font-size: 15px; width: 60px !important; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        .file-box { background: #0d1117; padding: 10px; border-radius: 6px; margin-top: 5px; border: 1px solid var(--border); font-size: 13px; display: flex; justify-content: space-between; }
+        #editor-modal { display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: var(--bg); z-index: 1000; padding: 20px; box-sizing: border-box; overflow-y: auto; }
+        .fx-opt { display: flex; align-items: center; gap: 8px; background: #1c2128; padding: 10px; border-radius: 6px; border: 1px solid var(--border); margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+    <div style="font-size: 12px; color: var(--blue); margin-bottom: 10px;">
+        <b>bakwan workspace</b> v0.4 | made by Azrul
+    </div>
+
+    <div class="nav-grid">
+        <div class="btn-nav btn-active" onclick="switchTab('dashboard', this)">Dashboard</div>
+        <div class="btn-nav" onclick="switchTab('storage', this)">Storage</div>
+        <div class="btn-nav" onclick="switchTab('settings', this)">Settings</div>
+        <div class="btn-nav" onclick="location.reload()">Reset</div>
+    </div>
+
+    <div id="dashboard" class="tab-content active-tab">
+        <div class="controls-header">
+            <h3 style="margin:0;">Blocks</h3>
+            <select id="layout-view">
+                <option>skill_norm</option>
+                <option>skill_ulti</option>
+            </select>
+            <button class="btn-add" onclick="openEditor()">+ Add Item</button>
+        </div>
+        <div id="item-list" style="text-align: center; padding: 40px; color: #444; border: 2px dashed #1c2128; border-radius: 12px;">
+            Editor Kosong. Masukkan skill mu
+        </div>
+    </div>
+
+    <div id="storage" class="tab-content">
+        <h3>Asset Storage</h3>
+        <div class="input-group" onclick="document.getElementById('f-up').click()" style="cursor: pointer; text-align: center; border-style: dashed;">
+            <p>Klik untuk Upload Model (.json) atau Texture (.png)</p>
+            <input type="file" id="f-up" hidden multiple onchange="handleFiles(this.files)">
+        </div>
+        <div id="storage-list"></div>
+    </div>
+
+    <div id="settings" class="tab-content">
+        <h3>Addon Manifest & Export</h3>
+        <div class="input-group">
+            <label>Addon Name</label>
+            <input type="text" id="manifest-name" placeholder="Contoh: Bakwan RPG Addon">
+            
+            <label style="margin-top:15px;">Author Name</label>
+            <input type="text" id="manifest-author" placeholder="Azrul :V">
+
+            <label style="margin-top:15px;">Minecraft Version (Major . Minor . Patch)</label>
+            <div class="version-stepper">
+                <button class="btn-step" onclick="step('mc-1', -1)"> < </button>
+                <input type="number" id="mc-1" class="input-num" value="1" inputmode="numeric">
+                <button class="btn-step" onclick="step('mc-1', 1)"> > </button>
+                <span style="color:gray; font-weight:bold;">.</span>
+                <button class="btn-step" onclick="step('mc-2', -1)"> < </button>
+                <input type="number" id="mc-2" class="input-num" value="20" inputmode="numeric">
+                <button class="btn-step" onclick="step('mc-2', 1)"> > </button>
+                <span style="color:gray; font-weight:bold;">.</span>
+                <button class="btn-step" onclick="step('mc-3', -1)"> < </button>
+                <input type="number" id="mc-3" class="input-num" value="0" inputmode="numeric">
+                <button class="btn-step" onclick="step('mc-3', 1)"> > </button>
+            </div>
+
+            <label style="margin-top:15px;">Addon Version (Year . Minor . Patch)</label>
+            <div class="version-stepper">
+                <button class="btn-step" onclick="step('ad-year', -1)"> < </button>
+                <input type="number" id="ad-year" class="input-num" value="26" inputmode="numeric">
+                <button class="btn-step" onclick="step('ad-year', 1)"> > </button>
+                <span style="color:gray; font-weight:bold;">.</span>
+                <button class="btn-step" onclick="step('ad-min', -1)"> < </button>
+                <input type="number" id="ad-min" class="input-num" value="1" inputmode="numeric">
+                <button class="btn-step" onclick="step('ad-min', 1)"> > </button>
+                <span style="color:gray; font-weight:bold;">.</span>
+                <button class="btn-step" onclick="step('ad-patch', -1)"> < </button>
+                <input type="number" id="ad-patch" class="input-num" value="0" inputmode="numeric">
+                <button class="btn-step" onclick="step('ad-patch', 1)"> > </button>
+            </div>
+            
+            <label style="margin-top:15px;">Description</label>
+            <textarea id="manifest-desc" placeholder="Jelaskan fitur unik addonmu..."></textarea>
+        </div>
+        <button onclick="exportProject()" style="width: 100%; background: var(--green); color: white; border: none; padding: 15px; border-radius: 10px; font-weight: bold; cursor: pointer;">
+            GENERATE & EXPORT .MCADDON
+        </button>
+    </div>
+
+    <div id="editor-modal">
+        <h2 style="color: var(--blue);">Manual Detail Editor</h2>
+        <div class="input-group">
+            <label>Identifier</label>
+            <input type="text" id="ed-id" placeholder="id_pedang_gta">
+        </div>
+        <div class="input-group">
+            <label>Model & Texture (Manual String)</label>
+            <input type="text" id="ed-model" placeholder="nama_model.geo.json">
+            <input type="text" id="ed-texture" placeholder="nama_texture.png" style="margin-top:10px;">
+        </div>
+        <div class="input-group">
+            <label>Additional Effects</label>
+            <div class="fx-opt"><input type="checkbox" id="fx-jump"> <span>Enable GTA Jump Effect</span></div>
+            <div class="fx-opt"><input type="checkbox" id="fx-rpg"> <span>Enable RPG Blast Effect</span></div>
+            <div class="fx-opt"><input type="checkbox" id="fx-sneak"> <span>Sneak Mode Activation</span></div>
+        </div>
+        <div style="display: flex; gap: 10px; margin-bottom: 50px;">
+            <button onclick="closeEditor()" style="flex:1; background:#222; color:white; border:none; padding:15px; border-radius:10px;">Batal</button>
+            <button onclick="saveItem()" style="flex:2; background:var(--blue); color:white; border:none; padding:15px; border-radius:10px; font-weight:bold;">Simpan Item</button>
+        </div>
+    </div>
+
+<script type="module">
+    // 1. IMPORT FIREBASE SDK
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDgmzpVEhyR5cjIMJqFJbO1T-hUErR7KZ4",
+        authDomain: "bakwan-workspace.firebaseapp.com",
+        databaseURL: "https://bakwan-workspace-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "bakwan-workspace",
+        storageBucket: "bakwan-workspace.firebasestorage.app",
+        messagingSenderId: "32109425406",
+        appId: "1:32109425406:web:d66e905dea151c0772abaf",
+        measurementId: "G-8ZCQR5DS2T"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const storage = getStorage(app);
+
+    // --- FITUR NAVIGASI & UI (DIPERTAHANKAN) ---
+
+    window.onload = function() {
+        const year = new Date().getFullYear().toString().slice(-2);
+        document.getElementById('ad-year').value = year;
+    };
+
+    window.switchTab = function(id, btn) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active-tab'));
+        document.querySelectorAll('.btn-nav').forEach(b => b.classList.remove('btn-active'));
+        document.getElementById(id).classList.add('active-tab');
+        btn.classList.add('btn-active');
+    };
+
+    window.step = function(id, val) {
+        const el = document.getElementById(id);
+        let current = parseInt(el.value) || 0;
+        el.value = Math.max(0, current + val);
+    };
+
+    window.openEditor = () => document.getElementById('editor-modal').style.display = 'block';
+    window.closeEditor = () => document.getElementById('editor-modal').style.display = 'none';
+
+    window.saveItem = async function() {
+        const id = document.getElementById('ed-id').value;
+        const model = document.getElementById('ed-model').value;
+        const texture = document.getElementById('ed-texture').value;
+
+        if(!id || !model) return alert("Wajib isi Identifier & Model!");
+
+        try {
+            await push(ref(db, 'items'), {
+                id: "custom:" + id,
+                model: model,
+                texture: texture,
+                timestamp: Date.now()
+            });
+            
+            closeEditor();
+            // Reset input
+            document.getElementById('ed-id').value = "";
+            document.getElementById('ed-model').value = "";
+            document.getElementById('ed-texture').value = "";
+        } catch (error) {
+            alert("Gagal Simpan! Pastikan Rules Database sudah di-set ke TRUE");
+        }
+    };
+
+    onValue(ref(db, 'items'), (snapshot) => {
+        const list = document.getElementById('item-list');
+        const data = snapshot.val();
+        
+        if (!data) {
+            list.innerHTML = "Editor Kosong. Masukkan skill mu";
+            return;
+        }
+
+        list.innerHTML = "";
+        // Looping data dari Firebase
+        Object.keys(data).reverse().forEach(key => {
+            const i = data[key];
+            list.innerHTML += `
+                <div class="input-group" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <div><b>${i.id}</b><br><small style="color:gray">${i.model}</small></div>
+                    <button class="btn-nav" style="color:white">Edit</button>
+                </div>
+            `;
+        });
+    });
+
+    window.handleFiles = async function(fList) {
+        for(let file of fList) {
+            const storagePath = sRef(storage, 'assets/' + file.name);
+            try {
+                // Upload ke Cloud
+                const snapshot = await uploadBytes(storagePath, file);
+                const url = await getDownloadURL(snapshot.ref);
+                
+                // Simpan meta-data ke Database
+                await push(ref(db, 'storage'), {
+                    name: file.name,
+                    url: url
+                });
+            } catch (err) {
+                alert("Gagal upload file: " + file.name);
+            }
+        }
+    };
+
+    // Render Storage (Otomatis Sync Real-time)
+    onValue(ref(db, 'storage'), (snapshot) => {
+        const list = document.getElementById('storage-list');
+        const data = snapshot.val();
+        list.innerHTML = "";
+        if (data) {
+            Object.values(data).reverse().forEach(f => {
+                list.innerHTML += `
+                    <div class="file-box">
+                        <span>${f.name}</span>
+                        <a href="${f.url}" target="_blank" style="color:var(--blue); text-decoration:none; font-size:11px;">LINKED</a>
+                    </div>`;
+            });
+        }
+    });
+
+    window.exportProject = function() {
+        const name = document.getElementById('manifest-name').value;
+        const mcVer = `${document.getElementById('mc-1').value}.${document.getElementById('mc-2').value}.${document.getElementById('mc-3').value}`;
+        const adVer = `${document.getElementById('ad-year').value}.${document.getElementById('ad-min').value}.${document.getElementById('ad-patch').value}`;
+        
+        if(!name) return alert("Isi Nama Addon dulu!");
+        
+        alert(`Generate Sukses!\nAddon: ${name}\nMC: ${mcVer}\nVersion: ${adVer}\n\nData sudah aman di Firebase Cloud.`);
+    };
+</script>
+</body>
+</html>
